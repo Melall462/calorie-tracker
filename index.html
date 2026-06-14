@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calorie Tracker</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-panel">
+        <div>
+          <p class="eyebrow">Calorie Canvas</p>
+          <h1>Sign in to sync your tracker</h1>
+          <p class="hero-copy">
+            Your meals, water, goals, and preferences are stored under your account so they can move with you when the server is online.
+          </p>
+        </div>
+
+        <form class="auth-form" id="authForm">
+          <label>
+            Name
+            <input id="authName" name="name" type="text" placeholder="Your name" />
+          </label>
+          <label>
+            Email
+            <input id="authEmail" name="email" type="email" placeholder="you@example.com" required />
+          </label>
+          <label>
+            Password
+            <input id="authPassword" name="password" type="password" placeholder="At least 6 characters" required />
+          </label>
+          <div class="auth-actions">
+            <button class="accent-button" type="submit" data-auth-mode="signup">Create account</button>
+            <button class="ghost-secondary-button" type="submit" data-auth-mode="login">Log in</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <p class="eyebrow">Wellness Dashboard</p>
+            <h1>Calorie Canvas</h1>
+          </div>
+        </div>
+
+        <nav class="nav-grid" aria-label="Primary tabs">
+          <button class="nav-item active" type="button" data-tab-target="dashboard" aria-selected="true">
+            Dashboard
+          </button>
+          <button class="nav-item" type="button" data-tab-target="meals" aria-selected="false">
+            Meals
+          </button>
+          <button class="nav-item" type="button" data-tab-target="progress" aria-selected="false">
+            Progress
+          </button>
+          <button class="nav-item" type="button" data-tab-target="insights" aria-selected="false">
+            Insights
+          </button>
+        </nav>
+
+        <section class="coach-card">
+          <p class="eyebrow">Today’s Focus</p>
+          <h2>Stay under your target without losing protein.</h2>
+          <p>
+            You have room for one balanced meal and one lighter snack. Prioritize
+            fiber at dinner.
+          </p>
+          <button class="ghost-button" type="button" data-tab-shortcut="insights">
+            View Suggestions
+          </button>
+          <button class="ghost-button" id="logoutButton" type="button">
+            Log out
+          </button>
+        </section>
+      </aside>
+
+      <main class="dashboard">
+        <div class="status-banner" id="saveStatus" aria-live="polite">
+          Loading your local data...
+        </div>
+
+        <section class="tab-panel is-active" data-tab-panel="dashboard">
+          <section class="hero-panel">
+            <div>
+              <p class="eyebrow">Wednesday, April 22</p>
+              <h2>Build momentum with every meal.</h2>
+              <p class="hero-copy">
+                Track calories, protein, carbs, and hydration in one place with a
+                clean snapshot of what’s left for the day.
+              </p>
+            </div>
+
+            <div class="streak-card">
+              <span>7 day streak</span>
+              <strong>92%</strong>
+              <p>Goal consistency this week</p>
+            </div>
+          </section>
+
+          <section class="summary-grid">
+            <article class="summary-card hero-metric">
+              <div class="ring-wrap">
+                <div class="calorie-ring" id="calorieRing" style="--progress: 72">
+                  <div class="ring-inner">
+                    <span>Remaining</span>
+                    <strong data-remaining-calories>680</strong>
+                    <small>kcal</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="metric-copy">
+                <p class="eyebrow">Daily Goal</p>
+                <h3><span data-consumed-calories>1,720</span> / <span data-daily-goal>2,400</span> kcal</h3>
+                <p data-calorie-message>
+                  You are on pace for a steady deficit and a high-protein finish.
+                </p>
+              </div>
+            </article>
+
+            <article class="summary-card macros-card">
+              <div class="macros-header">
+                <div>
+                  <p class="eyebrow">Macros</p>
+                  <h3>Balanced split</h3>
+                </div>
+                <button class="text-button" type="button" data-tab-shortcut="progress">
+                  Adjust Goals
+                </button>
+              </div>
+
+              <div class="macro-list">
+                <div class="macro-row">
+                  <div>
+                    <span>Protein</span>
+                    <strong data-protein-summary>118 / 150g</strong>
+                  </div>
+                  <div class="bar"><span data-protein-bar style="--fill: 79%; --tone: #ff7a59"></span></div>
+                </div>
+                <div class="macro-row">
+                  <div>
+                    <span>Carbs</span>
+                    <strong data-carbs-summary>163 / 220g</strong>
+                  </div>
+                  <div class="bar"><span data-carbs-bar style="--fill: 74%; --tone: #ffd166"></span></div>
+                </div>
+                <div class="macro-row">
+                  <div>
+                    <span>Fat</span>
+                    <strong data-fat-summary>56 / 75g</strong>
+                  </div>
+                  <div class="bar"><span data-fat-bar style="--fill: 75%; --tone: #3ddc97"></span></div>
+                </div>
+                <div class="macro-row">
+                  <div>
+                    <span>Water</span>
+                    <strong data-water-summary>0.0 / 2.5L</strong>
+                  </div>
+                  <div class="bar"><span data-water-bar style="--fill: 0%; --tone: #58a6ff"></span></div>
+                </div>
+              </div>
+
+              <div class="water-tracker">
+                <div class="water-header">
+                  <div>
+                    <p class="eyebrow">Water Tracker</p>
+                    <h4 data-water-headline>Log water as you go</h4>
+                  </div>
+                  <span class="water-total-pill" data-water-summary>0.0 / 2.5L</span>
+                </div>
+                <div class="water-actions">
+                  <button class="water-button" type="button" data-add-water="250">+250ml</button>
+                  <button class="water-button" type="button" data-add-water="500">+500ml</button>
+                  <button class="water-button" type="button" data-add-water="750">+750ml</button>
+                  <button class="water-button ghost" type="button" data-reset-water>Reset</button>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="content-grid">
+            <article class="panel meal-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Meal Log</p>
+                  <h3>Today’s meals</h3>
+                </div>
+                <button class="accent-button" type="button" data-open-meal-dialog>
+                  Quick Add
+                </button>
+              </div>
+
+              <div class="meal-list" id="dashboardMealList"></div>
+            </article>
+
+            <article class="panel insights-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Insights</p>
+                  <h3>Coach notes</h3>
+                </div>
+              </div>
+
+              <div class="insight-stack">
+                <article class="insight-card warning">
+                  <span class="insight-kicker">Calorie pacing</span>
+                  <h4 data-calorie-insight-title>Lunch was your heaviest meal</h4>
+                  <p data-calorie-insight-body>That worked well today because your dinner stayed moderate.</p>
+                </article>
+
+                <article class="insight-card success">
+                  <span class="insight-kicker">Protein target</span>
+                  <h4 data-protein-insight>Only 32g left to hit goal</h4>
+                  <p data-protein-insight-body>A lean evening snack would close the gap without overshooting.</p>
+                </article>
+
+                <article class="insight-card info">
+                  <span class="insight-kicker">Hydration</span>
+                  <h4 data-hydration-insight-title>700ml left to target</h4>
+                  <p data-hydration-insight-body>One bottle during the afternoon and one with dinner gets you there.</p>
+                </article>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel planner-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">AI Meal Coach</p>
+                <h3>Suggested next meals</h3>
+              </div>
+              <button class="text-button" type="button" id="refreshRecommendationsButton">
+                Refresh Ideas
+              </button>
+            </div>
+
+            <p class="panel-copy recommendation-copy" id="recommendationSummary">
+              Checking what fits into your day...
+            </p>
+
+            <div class="recommendation-grid" id="recommendationList">
+              <article class="planner-card recommendation-card">
+                <div>
+                  <span class="planner-label">Loading</span>
+                  <h4>Finding suggestions</h4>
+                  <p>We are matching meals to your remaining calories and protein target.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="meals" hidden>
+          <section class="hero-panel compact-hero">
+            <div>
+              <p class="eyebrow">Meal Library</p>
+              <h2>Everything you ate, organized.</h2>
+              <p class="hero-copy">
+                Review meal timing, calories, and protein for the day and add new
+                entries from one place.
+              </p>
+            </div>
+            <button class="accent-button" type="button" data-open-meal-dialog>
+              Add Meal
+            </button>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Meal Timeline</p>
+                <h3>Today’s full log</h3>
+              </div>
+              <div class="stat-pill">
+                <span>Total meals</span>
+                <strong data-meal-count>4</strong>
+              </div>
+            </div>
+            <div class="meal-list meal-list-detailed" id="fullMealList"></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="progress" hidden>
+          <section class="hero-panel compact-hero">
+            <div>
+              <p class="eyebrow">Progress</p>
+              <h2>Your goals at a glance.</h2>
+              <p class="hero-copy">
+                See how calories and protein compare against your daily targets.
+              </p>
+            </div>
+            <div class="stat-pill stat-pill-large">
+              <span>Current pace</span>
+              <strong data-pace-label>On track</strong>
+            </div>
+          </section>
+
+          <section class="summary-grid single-column">
+            <article class="summary-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Calories</p>
+                  <h3>Daily completion</h3>
+                </div>
+                <strong class="large-inline-stat"><span data-consumed-calories>1,720</span> / <span data-daily-goal>2,400</span></strong>
+              </div>
+              <div class="bar large-bar">
+                <span data-calorie-progress-bar style="--fill: 72%; --tone: #ff7a59"></span>
+              </div>
+              <p class="panel-copy" data-progress-message>680 calories remaining today.</p>
+            </article>
+
+            <article class="summary-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Protein</p>
+                  <h3>Target progress</h3>
+                </div>
+                <strong class="large-inline-stat" data-protein-summary>118 / 150g</strong>
+              </div>
+              <div class="bar large-bar">
+                <span data-protein-bar style="--fill: 79%; --tone: #ff7a59"></span>
+              </div>
+              <p class="panel-copy" data-protein-progress-message>32g of protein left to hit your goal.</p>
+            </article>
+
+            <article class="summary-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Carbs</p>
+                  <h3>Estimated balance</h3>
+                </div>
+                <strong class="large-inline-stat" data-carbs-summary>163 / 220g</strong>
+              </div>
+              <div class="bar large-bar">
+                <span data-carbs-bar style="--fill: 74%; --tone: #ffd166"></span>
+              </div>
+              <p class="panel-copy" data-carbs-progress-message>Carbs are landing in a balanced range today.</p>
+            </article>
+
+            <article class="summary-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Fat</p>
+                  <h3>Estimated balance</h3>
+                </div>
+                <strong class="large-inline-stat" data-fat-summary>56 / 75g</strong>
+              </div>
+              <div class="bar large-bar">
+                <span data-fat-bar style="--fill: 75%; --tone: #3ddc97"></span>
+              </div>
+              <p class="panel-copy" data-fat-progress-message>Fat intake looks moderate and steady.</p>
+            </article>
+
+            <article class="summary-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Water</p>
+                  <h3>Hydration progress</h3>
+                </div>
+                <strong class="large-inline-stat" data-water-summary>0.0 / 2.5L</strong>
+              </div>
+              <div class="bar large-bar">
+                <span data-water-bar style="--fill: 0%; --tone: #58a6ff"></span>
+              </div>
+              <p class="panel-copy" data-water-progress-message>Start logging water to track hydration.</p>
+            </article>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="insights" hidden>
+          <section class="hero-panel compact-hero">
+            <div>
+              <p class="eyebrow">Insights</p>
+              <h2>Small patterns, better decisions.</h2>
+              <p class="hero-copy">
+                Use today’s nutrition signals to decide how to finish the day.
+              </p>
+            </div>
+          </section>
+
+          <section class="content-grid equal-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Smart Notes</p>
+                  <h3>What stands out today</h3>
+                </div>
+              </div>
+              <div class="insight-stack">
+                <article class="insight-card warning">
+                  <span class="insight-kicker">Meal timing</span>
+                  <h4 data-pattern-insight-title>Front-loading calories worked in your favor</h4>
+                  <p data-pattern-insight-body>Most of your calories landed before dinner, which leaves helpful flexibility tonight.</p>
+                </article>
+                <article class="insight-card success">
+                  <span class="insight-kicker">Protein</span>
+                  <h4 data-protein-insight>Only 32g left to hit goal</h4>
+                  <p data-protein-insight-body>One yogurt bowl, shake, or lean wrap would close the gap quickly.</p>
+                </article>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Suggested Actions</p>
+                  <h3>Next best moves</h3>
+                </div>
+              </div>
+              <div class="action-list">
+                <article class="action-card">
+                  <strong>Choose a protein-first snack</strong>
+                  <p>Keep the final meal lighter while protecting recovery and fullness.</p>
+                </article>
+                <article class="action-card">
+                  <strong>Drink one more bottle of water</strong>
+                  <p>You are close enough that one deliberate hydration block finishes the job.</p>
+                </article>
+                <article class="action-card">
+                  <strong>Log dinner before you eat</strong>
+                  <p>Pre-logging helps you stay inside your remaining calorie budget.</p>
+                </article>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">AI Picks</p>
+                <h3>Meals that fit today</h3>
+              </div>
+              <button class="text-button" type="button" id="refreshInsightsRecommendationsButton">
+                Refresh Ideas
+              </button>
+            </div>
+            <div class="recommendation-grid compact-recommendation-grid" id="insightsRecommendationList"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="meal-dialog" id="mealDialog">
+      <form class="dialog-card" id="mealForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Quick Add</p>
+            <h3 id="mealDialogTitle">Log a new meal</h3>
+          </div>
+          <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <input id="mealId" name="mealId" type="hidden" />
+
+        <label>
+          Meal name
+          <input id="mealName" name="mealName" type="text" placeholder="Turkey wrap" required />
+        </label>
+
+        <div class="field-row">
+          <label>
+            Category
+            <select id="mealCategory" name="mealCategory">
+              <option>Breakfast</option>
+              <option>Lunch</option>
+              <option>Dinner</option>
+              <option>Snack</option>
+            </select>
+          </label>
+
+          <label>
+            Calories
+            <input id="mealCalories" name="mealCalories" type="number" min="0" placeholder="450" required />
+          </label>
+        </div>
+
+        <label>
+          Notes
+          <input id="mealNotes" name="mealNotes" type="text" placeholder="Chicken, greens, vinaigrette" />
+        </label>
+
+        <label>
+          Protein (g)
+          <input id="mealProtein" name="mealProtein" type="number" min="0" placeholder="30" required />
+        </label>
+
+        <div class="dialog-actions">
+          <button class="ghost-secondary-button" id="cancelMealButton" type="button">Cancel</button>
+          <button class="accent-button wide" id="submitMealButton" type="submit">Save meal</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="meal-dialog recipe-dialog" id="recipeDialog">
+      <div class="dialog-card recipe-card">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" id="recipeTag">Recipe</p>
+            <h3 id="recipeTitle">Meal details</h3>
+          </div>
+          <button class="icon-button" id="closeRecipeDialogButton" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <div class="recipe-stats" id="recipeStats"></div>
+        <p class="panel-copy" id="recipeDescription"></p>
+
+        <div class="recipe-section">
+          <h4>Ingredients</h4>
+          <ul class="recipe-list" id="recipeIngredients"></ul>
+        </div>
+
+        <div class="recipe-section">
+          <h4>Instructions</h4>
+          <ol class="recipe-list numbered" id="recipeInstructions"></ol>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="meal-dialog onboarding-dialog" id="onboardingDialog">
+      <form class="dialog-card onboarding-card" id="onboardingForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Personal setup</p>
+            <h3>Build your daily targets</h3>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Age
+            <input name="age" type="number" min="13" max="100" placeholder="25" required />
+          </label>
+          <label>
+            Sex
+            <select name="sex">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Height (cm)
+            <input name="heightCm" type="number" min="100" max="230" placeholder="175" required />
+          </label>
+          <label>
+            Weight (kg)
+            <input name="weightKg" type="number" min="35" max="250" step="0.1" placeholder="75" required />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Activity
+            <select name="activityLevel">
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Light</option>
+              <option value="moderate" selected>Moderate</option>
+              <option value="active">Active</option>
+              <option value="athlete">Athlete</option>
+            </select>
+          </label>
+          <label>
+            Goal
+            <select name="goal">
+              <option value="lose">Lose fat</option>
+              <option value="maintain" selected>Maintain</option>
+              <option value="gain">Gain weight</option>
+              <option value="muscle">Build muscle</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Dietary restrictions
+          <select name="dietaryRestrictions" multiple>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="vegan">Vegan</option>
+            <option value="gluten-free">Gluten-free</option>
+            <option value="dairy-free">Dairy-free</option>
+            <option value="halal">Halal</option>
+            <option value="low-carb">Low carb</option>
+          </select>
+        </label>
+
+        <label>
+          Allergies or foods to avoid
+          <input name="allergies" type="text" placeholder="Peanuts, shellfish, lactose..." />
+        </label>
+
+        <label>
+          Food preference
+          <input name="preferredMeals" type="text" placeholder="Cheap meals, high protein, no seafood..." />
+        </label>
+
+        <button class="accent-button wide" type="submit">Save setup</button>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
