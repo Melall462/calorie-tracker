@@ -12,6 +12,17 @@ Open `http://127.0.0.1:4173`.
 
 The server creates `data/meals.json` automatically. This local database is ignored by Git because it contains account and session data.
 
-## Online sync
+## Put it online
 
-Accounts sync between devices when this Node server and its data directory are deployed to a persistent host. The included JSON datastore is suitable for local development and small demos. For a public production deployment, replace it with a managed database and configure HTTPS, secure cookies or expiring tokens, rate limiting, email verification, password reset, and backups.
+A GitHub repository URL shares the source code but does not run the server. To give people a working app URL, deploy the repository as a web service.
+
+This repository includes a `render.yaml` Blueprint for Render:
+
+1. Sign in to [Render](https://dashboard.render.com/).
+2. Choose **New > Blueprint** and connect `Melall462/calorie-tracker`.
+3. Review the service and persistent-disk cost, then click **Apply**.
+4. Share the generated `https://...onrender.com` URL, not the GitHub URL.
+
+Render automatically redeploys the app when changes are pushed to `main`. The attached disk stores accounts, sessions, meals, water, and onboarding data across deploys.
+
+The included JSON datastore is suitable for a small personal deployment. Before opening the app to a larger public audience, move account data to a managed database and add expiring sessions, rate limiting, email verification, password reset, and backups.

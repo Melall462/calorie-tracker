@@ -10,6 +10,8 @@ let authToken = localStorage.getItem("calorieCanvasToken") || "";
 
 const authScreen = document.querySelector("#authScreen");
 const authForm = document.querySelector("#authForm");
+const authMessage = document.querySelector("#authMessage");
+const authButtons = [...authForm.querySelectorAll("button[type='submit']")];
 const logoutButton = document.querySelector("#logoutButton");
 const onboardingDialog = document.querySelector("#onboardingDialog");
 const onboardingForm = document.querySelector("#onboardingForm");
@@ -143,6 +145,21 @@ function setText(nodes, value) {
 function setStatus(message, tone = "neutral") {
   saveStatus.textContent = message;
   saveStatus.dataset.tone = tone;
+}
+
+function setAuthMessage(message, tone = "neutral") {
+  authMessage.textContent = message;
+  authMessage.dataset.tone = tone;
+}
+
+function setAuthLoading(isLoading, activeMode = "login") {
+  authButtons.forEach((button) => {
+    button.disabled = isLoading;
+  });
+
+  if (isLoading) {
+    setAuthMessage(activeMode === "signup" ? "Creating your account..." : "Logging you in...");
+  }
 }
 
 function resetMealForm() {
@@ -493,6 +510,9 @@ async function loadMeals() {
     setStatus("Account data loaded.", "success");
   } catch (error) {
     console.error(error);
+    if (!authToken) {
+      setAuthMessage("Your session expired. Please log in again.", "error");
+    }
     setStatus("Could not load your account data.", "error");
   }
 }
@@ -522,6 +542,12 @@ async function handleAuthSubmit(event) {
   };
 
   try {
+    setAuthLoading(true, mode);
+
+    if (mode === "signup" && !payload.name) {
+      throw new Error("Enter your name to create an account.");
+    }
+
     const response = await fetch(mode === "signup" ? "/api/signup" : "/api/login", {
       method: "POST",
       headers: {
@@ -546,6 +572,8 @@ async function handleAuthSubmit(event) {
     await loadRecommendations();
     document.body.classList.remove("is-signed-out");
     document.body.classList.add("is-signed-in");
+    setAuthMessage("");
+    authForm.reset();
     setStatus(mode === "signup" ? "Account created." : "Logged in.", "success");
 
     if (currentUser && !currentUser.profile.onboardingComplete) {
@@ -553,7 +581,12 @@ async function handleAuthSubmit(event) {
     }
   } catch (error) {
     console.error(error);
-    setStatus(error.message || "Could not authenticate.", "error");
+    const message = error instanceof TypeError
+      ? "The server is offline. Start it and try again."
+      : error.message || "Could not authenticate.";
+    setAuthMessage(message, "error");
+  } finally {
+    setAuthLoading(false);
   }
 }
 
@@ -610,6 +643,7 @@ async function logout() {
   waterMl = 0;
   document.body.classList.remove("is-signed-in");
   document.body.classList.add("is-signed-out");
+  setAuthMessage("You have been logged out.", "success");
 }
 
 async function deleteMeal(mealId) {

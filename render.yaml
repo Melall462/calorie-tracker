@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: calorie-canvas
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: calorie-canvas-data
+      mountPath: /var/data
+      sizeGB: 1

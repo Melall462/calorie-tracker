@@ -3,9 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const PORT = 4173;
+const PORT = Number(process.env.PORT) || 4173;
+const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, "data");
+const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const DATA_FILE = path.join(DATA_DIR, "meals.json");
 
 const seedMeals = [
@@ -1520,6 +1521,6 @@ const server = http.createServer(async (request, response) => {
 });
 
 ensureDataFile();
-server.listen(PORT, () => {
-  console.log(`Calorie Canvas server running at http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Calorie Canvas server running at http://${HOST}:${PORT}`);
 });
