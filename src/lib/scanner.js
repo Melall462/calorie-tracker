@@ -14,8 +14,15 @@ function unavailable(message) {
 async function startNative(video, onCode) {
   const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-  video.srcObject = stream;
-  await video.play();
+  try {
+    video.srcObject = stream;
+    await video.play();
+  } catch (error) {
+    // For example the page was left while the camera was starting. Never leave the camera running after a failure.
+    stream.getTracks().forEach((track) => track.stop());
+    video.srcObject = null;
+    throw error;
+  }
 
   let stopped = false;
   let timer = null;

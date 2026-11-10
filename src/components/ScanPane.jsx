@@ -6,7 +6,8 @@ import { round1 } from '../lib/nutrition.js';
 
 // Scan a barcode with the camera (or type it), look the product up, choose how much you ate, then add it.
 // Like the other panes it calls onAdd({ name, serving, calories, protein, carbs, fat }) and leaves the rest to the caller.
-export default function ScanPane({ onAdd, addLabel = 'Add food' }) {
+// When a scan gives no usable result it offers a button that calls onCustom(name), so the caller can open its Custom form.
+export default function ScanPane({ onAdd, addLabel = 'Add food', onCustom, customLabel = 'Add it as a custom food' }) {
   const [typed, setTyped] = useState('');
   const [phase, setPhase] = useState('idle'); // idle, scanning, loading, found, missing or error
   const [message, setMessage] = useState('');
@@ -95,6 +96,14 @@ export default function ScanPane({ onAdd, addLabel = 'Add food' }) {
     lookup(code);
   }
 
+  // Shown whenever the scan cannot give a result, so nobody is left at a dead end.
+  const customButton = (name = '') =>
+    onCustom ? (
+      <button type="button" className="btn secondary" onClick={() => onCustom(name)}>
+        {customLabel}
+      </button>
+    ) : null;
+
   const grams = toNumber(amount);
   const totals = product && grams ? scaleProduct(product, grams) : null;
 
@@ -152,14 +161,20 @@ export default function ScanPane({ onAdd, addLabel = 'Add food' }) {
         </p>
       )}
       {phase === 'error' && (
-        <p className="error" role="alert">
-          {message}
-        </p>
+        <>
+          <p className="error" role="alert">
+            {message}
+          </p>
+          {customButton()}
+        </>
       )}
       {phase === 'missing' && (
-        <p className="note" role="status">
-          We couldn&apos;t find that barcode. Open Food Facts doesn&apos;t have every product. You can enter it yourself on the Custom tab.
-        </p>
+        <>
+          <p className="note" role="status">
+            We couldn&apos;t find that barcode. Open Food Facts doesn&apos;t have every product, so you can add this one yourself.
+          </p>
+          {customButton()}
+        </>
       )}
 
       {phase === 'found' && product && (
@@ -168,7 +183,10 @@ export default function ScanPane({ onAdd, addLabel = 'Add food' }) {
           {product.brand && <p className="muted">{product.brand}</p>}
 
           {!product.hasNutrition ? (
-            <p className="note">This product has no calorie information in the database. You can enter it yourself on the Custom tab.</p>
+            <>
+              <p className="note">This product has no calorie information in the database. You can add it yourself from the label.</p>
+              {customButton(product.name)}
+            </>
           ) : (
             <>
               <p className="muted small">

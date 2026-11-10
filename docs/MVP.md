@@ -253,3 +253,5 @@ Next steps this enables: a meal planner (assign saved meals to days) and a shopp
 - **New dependencies:** `@zxing/browser` and `@zxing/library`, loaded only when the browser has no built-in `BarcodeDetector`. Run `npm install` after pulling this change.
 
 Tested: barcode validation, parsing (including kJ-only and missing data), scaling and every error path; a real-browser run with a fake camera and mocked API; camera cleanup; scanning inside the meal builder. A bug found by the tests (the camera staying on if stopped while starting) is fixed.
+
+**Follow-up: failed scans.** When a scan cannot give a result (not found, no calories listed, typo, network error, blocked camera) the Scan tab shows an "Add it as a custom food" button that switches to the Custom form. If the product was found but had no calories, its name is carried across. In the meal builder the same button says "custom ingredient". A second timing bug was also fixed: the camera is now always released if playback fails while it is starting.

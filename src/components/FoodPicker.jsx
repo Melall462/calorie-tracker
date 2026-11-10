@@ -83,8 +83,8 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
 
 const BLANK = { name: '', calories: '', protein: '', carbs: '', fat: '' };
 
-export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food name', namePlaceholder = 'Leftover lasagne' }) {
-  const [form, setForm] = useState(BLANK);
+export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food name', namePlaceholder = 'Leftover lasagne', initialName = '' }) {
+  const [form, setForm] = useState({ ...BLANK, name: initialName });
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const protein = toNumber(form.protein);

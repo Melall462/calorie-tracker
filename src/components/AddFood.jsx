@@ -15,6 +15,7 @@ const MODES = [
 export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMeal }) {
   const [mode, setMode] = useState('search');
   const [slot, setSlot] = useState(defaultMeal()); // breakfast, lunch, dinner or snack
+  const [customName, setCustomName] = useState(''); // a name to start the Custom form with (from a scan that found no calories)
   const [building, setBuilding] = useState(undefined); // undefined: not building, null: a new meal, object: editing that meal
 
   if (building !== undefined) {
@@ -50,15 +51,30 @@ export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMe
 
       <div className="segmented" role="group" aria-label="How to add food">
         {MODES.map((m) => (
-          <button key={m.id} onClick={() => setMode(m.id)} aria-pressed={mode === m.id}>
+          <button
+            key={m.id}
+            onClick={() => {
+              setMode(m.id);
+              setCustomName('');
+            }}
+            aria-pressed={mode === m.id}
+          >
             {m.label}
           </button>
         ))}
       </div>
 
       {mode === 'search' && <SearchPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'search' })} />}
-      {mode === 'custom' && <CustomPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'manual' })} />}
-      {mode === 'scan' && <ScanPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'scan' })} />}
+      {mode === 'custom' && <CustomPane initialName={customName} onAdd={(item) => onAdd({ ...item, meal: slot, source: 'manual' })} />}
+      {mode === 'scan' && (
+        <ScanPane
+          onAdd={(item) => onAdd({ ...item, meal: slot, source: 'scan' })}
+          onCustom={(name) => {
+            setCustomName(name);
+            setMode('custom');
+          }}
+        />
+      )}
       {mode === 'meals' && (
         <MealsPane
           meals={meals}

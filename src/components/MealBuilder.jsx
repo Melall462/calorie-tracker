@@ -19,6 +19,7 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
   const [notes, setNotes] = useState(meal?.notes ?? '');
   const [ingredients, setIngredients] = useState(meal?.ingredients ?? []);
   const [source, setSource] = useState('search');
+  const [customName, setCustomName] = useState(''); // a name to start the custom ingredient form with
 
   const count = toNumber(servings);
   const total = sumEntries(ingredients);
@@ -93,16 +94,40 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
           <h2 className="builder-title">Add an ingredient</h2>
           <div className="segmented" role="group" aria-label="Where the ingredient comes from">
             {SOURCES.map((s) => (
-              <button type="button" key={s.id} onClick={() => setSource(s.id)} aria-pressed={source === s.id}>
+              <button
+                type="button"
+                key={s.id}
+                onClick={() => {
+                  setSource(s.id);
+                  setCustomName('');
+                }}
+                aria-pressed={source === s.id}
+              >
                 {s.label}
               </button>
             ))}
           </div>
           {source === 'search' && <SearchPane onAdd={addIngredient} addLabel="Add ingredient" />}
           {source === 'custom' && (
-            <CustomPane onAdd={addIngredient} addLabel="Add ingredient" nameLabel="Ingredient name" namePlaceholder="Soy sauce" />
+            <CustomPane
+              onAdd={addIngredient}
+              addLabel="Add ingredient"
+              nameLabel="Ingredient name"
+              namePlaceholder="Soy sauce"
+              initialName={customName}
+            />
           )}
-          {source === 'scan' && <ScanPane onAdd={addIngredient} addLabel="Add ingredient" />}
+          {source === 'scan' && (
+            <ScanPane
+              onAdd={addIngredient}
+              addLabel="Add ingredient"
+              customLabel="Add it as a custom ingredient"
+              onCustom={(name) => {
+                setCustomName(name);
+                setSource('custom');
+              }}
+            />
+          )}
         </div>
 
         <label className="field">
