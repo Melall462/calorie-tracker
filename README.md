@@ -16,6 +16,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 ## What it does
 
 - **Today:** a scrollable strip of the last 60 days (tap one to view it, a dot means something was logged), a headline calories-left number with a progress ring, plus protein, carbs and fat against your goals. A water tracker with quick +250 ml and +500 ml buttons. Entries grouped by meal, each with Edit and Remove. Step back through past days.
+- **Meals (Add food tab):** a recipe book. Tap **Add meal** to build a meal from ingredients (from the food list or custom), say how many servings it makes, and add optional method notes. Nutrition per serving is worked out for you. Later, open a saved meal, choose how many servings you ate (1.5 works) and log it to a meal slot in one tap. Meals can be edited and deleted, and editing a recipe never changes entries you already logged.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
 - **Weight:** log your weight in kg by date (one per day), see the latest weight, the change since your first entry and a trend chart. Edit or remove any weigh-in.
@@ -34,13 +35,17 @@ src/
     Summary.jsx            calorie ring and macro bars
     Icon.jsx               navigation icons
     Water.jsx              water progress and quick-add buttons
-    AddFood.jsx            meal selector, Search and Custom tabs
+    AddFood.jsx            meal slot selector and the Search, Custom and Meals tabs
+    FoodPicker.jsx         food list search and custom entry, reused for ingredients
+    MealsPane.jsx          the recipe book: saved meals, log, edit, delete
+    MealBuilder.jsx        create or edit a saved meal
     EditEntry.jsx          edit a logged food
     Weight.jsx             log weight, trend chart, history
     Goals.jsx              My targets and Calculate for me
     BodyStats.jsx          body stats form and the calculated plan
   lib/
     useLocalStorage.js     saves state to the browser
+    recipes.js             saved meals: per-serving maths and cleaning stored data
     nutrition.js           goals, limits, totals and macro maths
     dates.js               date helpers ("YYYY-MM-DD" strings)
     foods.js               built-in food list
@@ -51,12 +56,13 @@ docs/MVP.md                the plan for this version
 
 ## Data
 
-Stored in the browser under five keys:
+Stored in the browser under six keys:
 
 - `nutrily:goals`: `{ calories, protein, carbs, fat, water }` (water in ml)
 - `nutrily:entries`: a list of `{ id, date, name, serving, calories, protein, carbs, fat, meal, source }`
 - `nutrily:water`: millilitres per day, e.g. `{ "2026-11-10": 1250 }`
 - `nutrily:weights`: kilograms per day, e.g. `{ "2026-11-10": 72.4 }`
+- `nutrily:meals`: the recipe book, a list of `{ id, name, servings, notes, ingredients: [{ id, name, serving, calories, protein, carbs, fat }] }`. Ingredient numbers are for the whole amount in the recipe, and per-serving values are calculated from them.
 - `nutrily:profile`: body stats and aim for the calculator, kept as text so it works with form inputs
 
 Version 1 stored a single number under `nutrily:goal`. It is carried over automatically, and entries saved before macros existed count as 0 g.
@@ -65,7 +71,7 @@ Clearing your browser data deletes the log, and it doesn't sync between devices.
 
 ## Deliberately left out (for now)
 
-Accounts and a database, deploying online, AI food estimates, meal planning. See `docs/MVP.md` for the roadmap.
+Accounts and a database, deploying online, AI food estimates, meal planner and shopping list. See `docs/MVP.md` for the roadmap.
 
 ## How the calorie calculator works
 

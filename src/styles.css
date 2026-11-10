@@ -311,3 +311,16 @@ input:focus, select:focus { border-color: var(--forest); }
 @media (prefers-reduced-motion: reduce) {
   .bar > span, .ring-fill { transition: none; }
 }
+
+/* Recipe book */
+.builder-title { margin-top: 12px; }
+.builder-add { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.builder-add .segmented { margin-top: 4px; }
+.totals-band { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; background: var(--forest); color: var(--on-forest); border-radius: var(--r-lg); padding: 14px 18px; }
+.totals-big { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.totals-macros { color: var(--on-forest-muted); font-size: 0.9rem; }
+.mini-list { margin: 0; padding-left: 20px; }
+.mini-list li { margin: 2px 0; }
+.notes { white-space: pre-wrap; background: var(--oat); border-radius: var(--r-md); padding: 10px 12px; margin: 4px 0; font-size: 0.95rem; }
+.meal-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.link-btn.danger { color: var(--over); }

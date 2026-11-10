@@ -225,3 +225,18 @@ Still out: accounts, AI features, meal planner and shopping list.
 - **Colour:** forest green and oat, with pistachio as the single bright accent. Dark mode was removed so the palette stays consistent.
 
 No data or behaviour changed. Tested in a real browser, including the day strip, over-goal state, editing, water, weight and the calculator.
+
+
+---
+
+## Update: recipe book (version 0.6)
+
+- **Meals tab in Add food:** a third tab beside Search and Custom. An **Add meal** button opens the meal builder.
+- **Meal builder:** name, how many servings the recipe makes, ingredients (from the built-in food list or custom, with macros) and optional method notes. It shows the per-serving calories and macros live.
+- **Using a saved meal:** open it to see the ingredients and notes, enter how many servings you ate (decimals allowed), and add it to the chosen meal slot. It is logged as one entry, so Today stays tidy.
+- **Managing meals:** edit and delete (with a confirmation). Editing a recipe does not rewrite entries already logged.
+- **Storage:** new key `nutrily:meals`. Per-serving nutrition is always calculated from the ingredient totals, never stored twice, and bad stored data is cleaned or dropped on load.
+
+Tested: the per-serving and scaling maths, cleaning of corrupted data, and a real-browser run of building a meal, logging it, editing, cancelling, deleting, reloading, and checking that Search and Custom logging still work.
+
+Next steps this enables: a meal planner (assign saved meals to days) and a shopping list built from their ingredients.
