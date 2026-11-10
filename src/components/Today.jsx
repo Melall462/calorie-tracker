@@ -1,23 +1,28 @@
 import Summary from './Summary.jsx';
 import Water from './Water.jsx';
-import { formatDay, shiftDay, todayKey } from '../lib/dates.js';
+import DayStrip from './DayStrip.jsx';
+import { formatDay, fromKey, todayKey } from '../lib/dates.js';
 import { MEALS } from '../lib/meals.js';
 import { round1, sumEntries } from '../lib/nutrition.js';
 
-export default function Today({ date, setDate, entries, goals, water, onWaterChange, onAddFood, onEdit, onRemove }) {
+export default function Today({ date, setDate, loggedDates, entries, goals, water, onWaterChange, onAddFood, onEdit, onRemove }) {
   const totals = sumEntries(entries);
   const isToday = date === todayKey();
 
   return (
     <>
-      <div className="daynav">
-        <button className="icon-btn" onClick={() => setDate(shiftDay(date, -1))} aria-label="Previous day">
-          ‹
-        </button>
-        <h1>{formatDay(date)}</h1>
-        <button className="icon-btn" onClick={() => setDate(shiftDay(date, 1))} disabled={isToday} aria-label="Next day">
-          ›
-        </button>
+      <DayStrip selected={date} onSelect={setDate} logged={loggedDates} />
+
+      <div className="day-head">
+        <div>
+          <h1>{formatDay(date)}</h1>
+          <p className="muted">{fromKey(date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        </div>
+        {!isToday && (
+          <button className="pill-btn" onClick={() => setDate(todayKey())}>
+            Back to today
+          </button>
+        )}
       </div>
 
       <Summary totals={totals} goals={goals} />

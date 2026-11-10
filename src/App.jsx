@@ -9,12 +9,13 @@ import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
 import Weight from './components/Weight.jsx';
 import Goals from './components/Goals.jsx';
+import Icon from './components/Icon.jsx';
 
 const TABS = [
-  { id: 'today', label: 'Today' },
-  { id: 'add', label: 'Add food' },
-  { id: 'weight', label: 'Weight' },
-  { id: 'goals', label: 'Goals' },
+  { id: 'today', label: 'Today', icon: 'home' },
+  { id: 'add', label: 'Add food', icon: 'plus' },
+  { id: 'weight', label: 'Weight', icon: 'scale' },
+  { id: 'goals', label: 'Goals', icon: 'target' },
 ];
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
   const latestWeight = weightList(weights).at(-1)?.kg;
   const goalKg = Number(profile.goalKg) || null;
   const dayEntries = entries.filter((e) => e.date === date);
+  const loggedDates = new Set(entries.map((e) => e.date)); // days that show a dot in the day strip
   const water = Number(waterByDate[date]) || 0;
   const editing = entries.find((e) => e.id === editingId);
 
@@ -93,6 +95,7 @@ export default function App() {
           <Today
             date={date}
             setDate={setDate}
+            loggedDates={loggedDates}
             entries={dayEntries}
             goals={goals}
             water={water}
@@ -111,13 +114,19 @@ export default function App() {
       </main>
 
       <nav className="nav" aria-label="Main">
-        <div className="nav-inner">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} aria-current={activeTab === t.id ? 'page' : undefined}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={t.id === 'add' ? 'nav-item add' : 'nav-item'}
+            onClick={() => setTab(t.id)}
+            aria-current={activeTab === t.id ? 'page' : undefined}
+          >
+            <span className="nav-icon">
+              <Icon name={t.icon} />
+            </span>
+            <span>{t.label}</span>
+          </button>
+        ))}
       </nav>
     </>
   );

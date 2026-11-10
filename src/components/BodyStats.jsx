@@ -151,7 +151,7 @@ function Plan({ plan, onApply }) {
   const { protein, carbs, fat } = plan.macros;
 
   return (
-    <section className="plan" aria-label="Your plan">
+    <section className="plan ready" aria-label="Your plan">
       <h2>Your daily target</h2>
       <p className="plan-big" aria-label={`${plan.target} calories`}>
         {plan.target.toLocaleString()} <span>kcal</span>

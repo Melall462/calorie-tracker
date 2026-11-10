@@ -213,3 +213,15 @@ Still out: accounts, AI features, meal planner and shopping list.
 Tested: calculator maths against hand-worked reference values (including the floors, caps and blocks), plus a real-browser run of the whole flow, persistence and applying targets.
 
 Still out: accounts, AI features, meal planner and shopping list.
+
+
+---
+
+## Update: new look (version 0.5)
+
+- **Day strip:** a horizontally scrolling row of the last 60 days at the top of Today. The selected day is centred, days with entries show a dot, and "Back to today" appears when viewing another day. It replaces the previous/next arrows.
+- **Hero:** the day's calories left (or over) as the headline number with a progress ring, plus goal and eaten.
+- **Cards and nav:** macros and water as soft cards, meals as flat rows, and a floating bottom bar with icons.
+- **Colour:** forest green and oat, with pistachio as the single bright accent. Dark mode was removed so the palette stays consistent.
+
+No data or behaviour changed. Tested in a real browser, including the day strip, over-goal state, editing, water, weight and the calculator.

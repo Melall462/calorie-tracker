@@ -1,6 +1,6 @@
 # Nutrily
 
-A calorie, macro, water and weight tracker. Set daily goals, log what you eat and drink, see what you have left.
+A calorie, macro, water and weight tracker, in forest green and oat. Set daily goals, log what you eat and drink, see what you have left.
 
 This is the first version: React only, no backend. Data is saved in your browser's localStorage.
 
@@ -15,7 +15,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 
 ## What it does
 
-- **Today:** calories eaten, left or over, plus protein, carbs and fat against your goals. A water tracker with quick +250 ml and +500 ml buttons. Entries grouped by meal, each with Edit and Remove. Step back through past days.
+- **Today:** a scrollable strip of the last 60 days (tap one to view it, a dot means something was logged), a headline calories-left number with a progress ring, plus protein, carbs and fat against your goals. A water tracker with quick +250 ml and +500 ml buttons. Entries grouped by meal, each with Edit and Remove. Step back through past days.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
 - **Weight:** log your weight in kg by date (one per day), see the latest weight, the change since your first entry and a trend chart. Edit or remove any weigh-in.
@@ -26,10 +26,13 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 
 ```
 src/
+  styles.css               the whole look: colour tokens at the top
   App.jsx                  state and tab navigation
   components/
-    Today.jsx              day navigation, summary, water, entries by meal
-    Summary.jsx            calories and macro totals vs goals
+    Today.jsx              day strip, summary, water, entries by meal
+    DayStrip.jsx           scrollable row of days
+    Summary.jsx            calorie ring and macro bars
+    Icon.jsx               navigation icons
     Water.jsx              water progress and quick-add buttons
     AddFood.jsx            meal selector, Search and Custom tabs
     EditEntry.jsx          edit a logged food
@@ -80,3 +83,7 @@ Safety limits, all in `src/lib/calculator.js`:
 - Every result carries a not-medical-advice note.
 
 These are estimates. The numbers are a starting point to adjust from real weigh-ins.
+
+## Design
+
+Forest green is for things you act on (the daily hero, buttons, the nav, the selected day). Oat is the page, linen is a raised surface, and pistachio is the one bright note, used only on forest. All colours are variables at the top of `src/styles.css`, so changing the theme means editing about a dozen lines. The font is DM Sans.
