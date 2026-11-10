@@ -300,3 +300,18 @@ Tested: calculator behaviour unchanged after the refactor, field validation and 
 Tested: preference logic against realistic Open Food Facts tags (including messy ones), and a real-browser run of the setup step, search filtering, ordering and tags, scan warnings, the Account section, persistence and the meal builder. The earlier suites still pass.
 
 Next step this enables: the AI meal maker can be told these preferences from the start.
+
+
+---
+
+## Update: accounts and cloud sync (version 1.1)
+
+- **Optional accounts** with Supabase. Email and password, with the Account page showing "Back up and sync" when signed out, and the email, last-synced time, **Sync now**, **Sign out** and **Sign out and clear this device** when signed in. At first-run setup, **I already have an account** lets someone sign in on a new device, which pulls their data and skips setup.
+- **Local-first sync.** The app still runs on the device's own data. Data is cut into units (a day, settings, the recipe book) and merged with a three-way merge, so additions on two devices are both kept and deletions do not come back. Saves are version-checked and retried on conflict.
+- **Safety:** different accounts never mix on a device, data downloaded from the cloud is cleaned before use, and clearing a device first backs it up.
+- **Database:** one table, `sync_units`, with row-level security and explicit grants (`supabase/migrations/`), plus a self-check script (`supabase/verify.sql`).
+- **Without Supabase configured** nothing changes and nothing appears.
+
+Tested: 57 sync engine checks (`npm test`) and a real-browser run of sign-up, confirmation, wrong passwords, two devices, offline edits, deletions, account switching and clearing a device, using an in-memory stand-in for the cloud. Not yet run against a real project: the SQL and `backend.js`.
+
+Next steps: password reset, delete account, a privacy policy, and a real-project test with two accounts.

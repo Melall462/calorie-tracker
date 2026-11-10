@@ -3,6 +3,8 @@ import { ACTIVITY, AIMS, PACES, SEX_OPTIONS, calculatePlan, fieldErrors, parse }
 import { round1 } from '../lib/nutrition.js';
 import { Plan } from './BodyStats.jsx';
 import FoodPreferences from './FoodPreferences.jsx';
+import AuthForm from './AuthForm.jsx';
+import { useCloud } from '../lib/CloudContext.js';
 
 // First-run setup: welcome, five short steps, then a plan. Finishing saves the body stats, the calorie and macro
 // targets, food preferences and today's weight. It reuses the calculator, so it follows the same safety rules.
@@ -32,6 +34,8 @@ export default function Onboarding({ initialProfile, initialPreferences, replay,
   const [profile, setProfile] = useState(initialProfile);
   const [preferences, setPreferences] = useState(initialPreferences);
   const headingRef = useRef(null);
+  const cloud = useCloud();
+  const [signingIn, setSigningIn] = useState(false);
 
   // Move focus to the new heading and the top of the page whenever the step changes.
   useEffect(() => {
@@ -61,6 +65,27 @@ export default function Onboarding({ initialProfile, initialPreferences, replay,
       weightKg: round1(parse(profile.weightKg)),
     });
 
+  /* ---------- Sign in (for someone who already has an account, for example on a new device) ---------- */
+  if (step === 0 && signingIn && !cloud.session) {
+    return (
+      <>
+        <header className="app-header">
+          <span className="wordmark">Nutrily</span>
+        </header>
+        <main className="onboarding">
+          <h1 ref={headingRef} tabIndex={-1}>
+            Sign in
+          </h1>
+          <p className="muted">Your data will sync to this device.</p>
+          <AuthForm onDone={() => setSigningIn(false)} />
+          <button className="link-btn" onClick={() => setSigningIn(false)}>
+            Back
+          </button>
+        </main>
+      </>
+    );
+  }
+
   /* ---------- Welcome ---------- */
   if (step === 0) {
     return (
@@ -82,6 +107,12 @@ export default function Onboarding({ initialProfile, initialPreferences, replay,
           <button className="link-btn" onClick={onSkip}>
             {replay ? 'Cancel' : 'Skip for now'}
           </button>
+          {cloud.available && !cloud.loading && !cloud.session && (
+            <button className="link-btn" onClick={() => setSigningIn(true)}>
+              I already have an account
+            </button>
+          )}
+          {cloud.session && <p className="welcome-account">Signed in as {cloud.email}. Your data will sync.</p>}
         </section>
       </main>
     );

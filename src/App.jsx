@@ -7,6 +7,9 @@ import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import { cleanMeals } from './lib/recipes.js';
 import { EMPTY_PREFERENCES, cleanPreferences } from './lib/preferences.js';
 import { PreferencesContext } from './lib/PreferencesContext.js';
+import { CloudContext } from './lib/CloudContext.js';
+import { useCloudSync } from './lib/useCloudSync.js';
+import { applyUnits as applyUnitsToState, collectUnits } from './lib/units.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
@@ -44,6 +47,25 @@ export default function App() {
   const profile = cleanProfile(savedProfile);
   const meals = cleanMeals(savedMeals);
   const preferences = cleanPreferences(savedPrefs);
+  // Optional cloud sync (see lib/sync.js). It only does anything once Supabase is configured and someone signs in.
+  const current = () => ({ entries, water: waterByDate, weights, goals, profile, preferences, onboarded: onboarded === true, meals });
+  const cloud = useCloudSync({
+    getUnits: () => collectUnits(current()),
+    applyUnits: (units) => {
+      const before = current();
+      const after = applyUnitsToState(before, units);
+      if (after.entries !== before.entries) setEntries(after.entries);
+      if (after.water !== before.water) setWaterByDate(after.water);
+      if (after.weights !== before.weights) setWeights(after.weights);
+      if (after.goals !== before.goals) setGoals(after.goals);
+      if (after.profile !== before.profile) setProfile(after.profile);
+      if (after.preferences !== before.preferences) setPreferences(after.preferences);
+      if (after.meals !== before.meals) setMeals(after.meals);
+      if (after.onboarded && !before.onboarded) setOnboarded(true);
+    },
+    watch: [entries, waterByDate, savedWeights, savedGoals, savedProfile, savedPrefs, savedMeals, onboarded],
+  });
+
   const dayEntries = entries.filter((e) => e.date === date);
   const loggedDates = new Set(entries.map((e) => e.date)); // days that show a dot in the day strip
   const water = Number(waterByDate[date]) || 0;
@@ -115,10 +137,15 @@ export default function App() {
   const activeTab = tab === 'edit' ? 'today' : tab;
 
   if (onboarded !== true || setupOpen) {
-    return <Onboarding initialProfile={profile} initialPreferences={preferences} replay={onboarded === true} onFinish={finishSetup} onSkip={skipSetup} />;
+    return (
+      <CloudContext.Provider value={cloud}>
+        <Onboarding initialProfile={profile} initialPreferences={preferences} replay={onboarded === true} onFinish={finishSetup} onSkip={skipSetup} />
+      </CloudContext.Provider>
+    );
   }
 
   return (
+    <CloudContext.Provider value={cloud}>
     <PreferencesContext.Provider value={preferences}>
       <header className="app-header">
         <span className="wordmark">Nutrily</span>
@@ -178,5 +205,6 @@ export default function App() {
         ))}
       </nav>
     </PreferencesContext.Provider>
+    </CloudContext.Provider>
   );
 }

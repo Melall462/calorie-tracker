@@ -403,3 +403,13 @@ h1:focus { outline: none; }
 .tag.warn { background: rgba(210, 154, 43, 0.25); color: #6b4a00; }
 .tag.liked { background: rgba(62, 142, 94, 0.18); color: #1f5a3a; }
 .note.alert { background: rgba(179, 56, 44, 0.12); border: 1.5px solid var(--over); color: var(--ink); }
+
+/* Account and sync */
+.cloud { margin: 16px 0 0; }
+.cloud h2 { margin-bottom: 4px; }
+.cloud .pane { margin-top: 12px; }
+.cloud-email { margin: 0 0 4px; font-weight: 600; overflow-wrap: anywhere; }
+.cloud-actions { display: flex; align-items: center; gap: 16px; margin: 8px 0 4px; }
+.cloud-actions .btn { width: auto; min-height: 44px; padding-inline: 1.1rem; }
+.cloud-confirm { margin-top: 4px; }
+.welcome-account { margin: 0; text-align: center; font-size: 0.9rem; color: var(--on-forest-muted); }

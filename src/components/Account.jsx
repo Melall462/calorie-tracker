@@ -4,6 +4,8 @@ import { LIMITS, macroCalories, weightList } from '../lib/nutrition.js';
 import BodyStats from './BodyStats.jsx';
 import Weight from './Weight.jsx';
 import FoodPreferences from './FoodPreferences.jsx';
+import CloudCard from './CloudCard.jsx';
+import { useCloud } from '../lib/CloudContext.js';
 
 const FIELDS = [
   { key: 'calories', label: 'Calories', unit: 'kcal' },
@@ -22,6 +24,7 @@ const VIEWS = [
 
 // Everything about you: daily targets, the calculator that works them out from your body stats, and your weight.
 export default function Account({ goals, onSaveGoals, profile, setProfile, weights, onSaveWeight, onRemoveWeight, preferences, onChangePreferences, onRunSetup }) {
+  const cloud = useCloud();
   const [view, setView] = useState('targets');
   const [applied, setApplied] = useState(0); // changes when the calculator replaces the targets, to reset the form
   const [notice, setNotice] = useState('');
@@ -38,7 +41,12 @@ export default function Account({ goals, onSaveGoals, profile, setProfile, weigh
   return (
     <>
       <h1>Account</h1>
-      <p className="muted">Your targets, body stats, weight and food preferences. Everything is saved on this device.</p>
+      <p className="muted">
+        Your targets, body stats, weight and food preferences.{' '}
+        {cloud.session ? 'Everything is saved on this device and synced to your account.' : 'Everything is saved on this device.'}
+      </p>
+
+      <CloudCard />
 
       <div className="segmented" role="group" aria-label="Account sections">
         {VIEWS.map((v) => (
