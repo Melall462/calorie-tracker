@@ -185,3 +185,16 @@ Added after the first version, still React only with localStorage.
 - **Storage:** `nutrily:goals` (object), `nutrily:water` (object by date). The old `nutrily:goal` number is migrated, and older entries without macros count as 0.
 
 Still out: weight tracking, editing entries, accounts, AI features.
+
+
+---
+
+## Update: editing entries and weight (version 0.3)
+
+- **Editing entries:** every logged food has an Edit button. The form changes name, serving note, meal, date, calories and macros. Changing the date moves the entry to that day (not the future). Cancel leaves the entry untouched.
+- **Weight:** a Weight tab logs kilograms by date, one per day (saving the same day replaces it). Valid range 20 to 500 kg. Shows the latest weight, change since the first entry and an SVG trend chart once there are two or more weigh-ins. Each weigh-in can be edited or removed.
+- **Storage:** new key `nutrily:weights`, an object of `{ "YYYY-MM-DD": kg }`. Invalid saved values are ignored on load.
+
+Tested in a real browser: add, edit (rename, recalculate, change meal, move day, cancel), weigh-in add, replace and remove, and persistence after reload.
+
+Still out: accounts, AI features, meal planner and shopping list.

@@ -2,31 +2,55 @@ import { useState } from 'react';
 import { useLocalStorage } from './lib/useLocalStorage.js';
 import { todayKey, formatDay } from './lib/dates.js';
 import { newId } from './lib/id.js';
-import { WATER_MAX, initialGoals, sanitizeGoals } from './lib/nutrition.js';
+import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
+import EditEntry from './components/EditEntry.jsx';
+import Weight from './components/Weight.jsx';
 import Goals from './components/Goals.jsx';
 
 const TABS = [
   { id: 'today', label: 'Today' },
   { id: 'add', label: 'Add food' },
+  { id: 'weight', label: 'Weight' },
   { id: 'goals', label: 'Goals' },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState('today');
+  const [tab, setTab] = useState('today'); // 'edit' is also a valid value, but it has no tab button
   const [date, setDate] = useState(todayKey());
+  const [editingId, setEditingId] = useState(null);
   const [savedGoals, setGoals] = useLocalStorage('nutrily:goals', initialGoals);
   const [entries, setEntries] = useLocalStorage('nutrily:entries', []);
   const [waterByDate, setWaterByDate] = useLocalStorage('nutrily:water', {}); // { "YYYY-MM-DD": millilitres }
+  const [savedWeights, setWeights] = useLocalStorage('nutrily:weights', {}); // { "YYYY-MM-DD": kg }
 
-  // Guard against a corrupted or hand-edited value in storage.
+  // Guard against corrupted or hand-edited values in storage.
   const goals = sanitizeGoals(savedGoals);
+  const weights = cleanWeights(savedWeights);
   const dayEntries = entries.filter((e) => e.date === date);
   const water = Number(waterByDate[date]) || 0;
+  const editing = entries.find((e) => e.id === editingId);
 
   function addEntry(item) {
     setEntries((prev) => [...prev, { ...item, id: newId(), date }]);
+    setTab('today');
+  }
+
+  function startEdit(id) {
+    setEditingId(id);
+    setTab('edit');
+  }
+
+  function saveEdit(updated) {
+    setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+    setDate(updated.date); // jump to the day the entry now lives on
+    setEditingId(null);
+    setTab('today');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
     setTab('today');
   }
 
@@ -44,6 +68,15 @@ export default function App() {
     });
   }
 
+  const saveWeight = (day, kg) => setWeights({ ...weights, [day]: kg });
+  const removeWeight = (day) => {
+    const copy = { ...weights };
+    delete copy[day];
+    setWeights(copy);
+  };
+
+  const activeTab = tab === 'edit' ? 'today' : tab;
+
   return (
     <>
       <header className="app-header">
@@ -60,17 +93,20 @@ export default function App() {
             water={water}
             onWaterChange={changeWater}
             onAddFood={() => setTab('add')}
+            onEdit={startEdit}
             onRemove={removeEntry}
           />
         )}
+        {tab === 'edit' && editing && <EditEntry key={editing.id} entry={editing} onSave={saveEdit} onCancel={cancelEdit} />}
         {tab === 'add' && <AddFood dayLabel={formatDay(date)} onAdd={addEntry} />}
+        {tab === 'weight' && <Weight weights={weights} onSave={saveWeight} onRemove={removeWeight} />}
         {tab === 'goals' && <Goals goals={goals} onSave={setGoals} />}
       </main>
 
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}>
+            <button key={t.id} onClick={() => setTab(t.id)} aria-current={activeTab === t.id ? 'page' : undefined}>
               {t.label}
             </button>
           ))}

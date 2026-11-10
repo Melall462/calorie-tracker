@@ -4,7 +4,7 @@ import { formatDay, shiftDay, todayKey } from '../lib/dates.js';
 import { MEALS } from '../lib/meals.js';
 import { round1, sumEntries } from '../lib/nutrition.js';
 
-export default function Today({ date, setDate, entries, goals, water, onWaterChange, onAddFood, onRemove }) {
+export default function Today({ date, setDate, entries, goals, water, onWaterChange, onAddFood, onEdit, onRemove }) {
   const totals = sumEntries(entries);
   const isToday = date === todayKey();
 
@@ -52,9 +52,14 @@ export default function Today({ date, setDate, entries, goals, water, onWaterCha
                     </div>
                     <div className="entry-side">
                       <strong>{e.calories}</strong>
-                      <button className="link-btn" onClick={() => onRemove(e.id)} aria-label={`Remove ${e.name}`}>
-                        Remove
-                      </button>
+                      <div className="entry-actions">
+                        <button className="link-btn" onClick={() => onEdit(e.id)} aria-label={`Edit ${e.name}`}>
+                          Edit
+                        </button>
+                        <button className="link-btn" onClick={() => onRemove(e.id)} aria-label={`Remove ${e.name}`}>
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
