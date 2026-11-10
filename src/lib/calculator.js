@@ -105,8 +105,37 @@ export function macroSplit(calories, weightKg, aim) {
   return { protein, carbs, fat };
 }
 
+// What is wrong with each field of the form, keyed by field name. An empty object means every field is fine.
+// Both the calculator and the setup flow use this, so the two always agree on what counts as valid.
+export function fieldErrors(profile) {
+  const age = parse(profile.age);
+  const heightCm = parse(profile.heightCm);
+  const weightKg = parse(profile.weightKg);
+  const goalKg = parse(profile.goalKg);
+  const hasBodyFat = String(profile.bodyFat).trim() !== '';
+  const bodyFat = hasBodyFat ? parse(profile.bodyFat) : NaN;
+  const activity = parse(profile.activity);
+  const e = {};
+
+  if (!SEX_OPTIONS.some((o) => o.value === profile.sex)) e.sex = 'Choose an option for sex (the formula needs it).';
+  if (age >= 1 && age < 18) e.age = "Nutrily's calculator is for adults (18 or over).";
+  else if (!(age >= 18 && age <= 100)) e.age = 'Enter your age (18 to 100).';
+  if (!(heightCm >= 120 && heightCm <= 230)) e.heightCm = 'Enter your height in cm (120 to 230).';
+  if (!(weightKg >= 30 && weightKg <= 300)) e.weightKg = 'Enter your current weight in kg (30 to 300).';
+  if (hasBodyFat && !(bodyFat >= 3 && bodyFat <= 60)) e.bodyFat = 'Body fat should be between 3% and 60%, or left blank.';
+  if (!(activity >= 1.2)) e.activity = 'Choose your activity level.';
+
+  if (profile.aim === 'lose' || profile.aim === 'gain') {
+    if (!(goalKg >= 30 && goalKg <= 300)) e.goalKg = 'Enter your goal weight in kg (30 to 300).';
+    else if (weightKg >= 30) {
+      if (profile.aim === 'lose' && goalKg >= weightKg) e.goalKg = 'For weight loss, your goal weight needs to be lower than your current weight.';
+      if (profile.aim === 'gain' && goalKg <= weightKg) e.goalKg = 'For weight gain, your goal weight needs to be higher than your current weight.';
+    }
+  }
+  return e;
+}
+
 export function calculatePlan(profile, today = new Date()) {
-  const errors = [];
   const age = parse(profile.age);
   const heightCm = parse(profile.heightCm);
   const weightKg = parse(profile.weightKg);
@@ -121,22 +150,10 @@ export function calculatePlan(profile, today = new Date()) {
     return { ok: false, minor: true, errors: [] };
   }
 
-  if (!SEX_OPTIONS.some((o) => o.value === profile.sex)) errors.push('Choose an option for sex (the formula needs it).');
-  if (!(age >= 18 && age <= 100)) errors.push('Enter your age (18 to 100).');
-  if (!(heightCm >= 120 && heightCm <= 230)) errors.push('Enter your height in cm (120 to 230).');
-  if (!(weightKg >= 30 && weightKg <= 300)) errors.push('Enter your current weight in kg (30 to 300).');
-  if (hasBodyFat && !(bodyFat >= 3 && bodyFat <= 60)) errors.push('Body fat should be between 3% and 60%, or left blank.');
-  if (!(activity >= 1.2)) errors.push('Choose your activity level.');
+  const errors = Object.values(fieldErrors(profile));
+  if (errors.length) return { ok: false, minor: false, errors };
 
   const needsGoal = aim === 'lose' || aim === 'gain';
-  if (needsGoal) {
-    if (!(goalKg >= 30 && goalKg <= 300)) errors.push('Enter your goal weight in kg (30 to 300).');
-    else if (weightKg >= 30) {
-      if (aim === 'lose' && goalKg >= weightKg) errors.push('For weight loss, your goal weight needs to be lower than your current weight.');
-      if (aim === 'gain' && goalKg <= weightKg) errors.push('For weight gain, your goal weight needs to be higher than your current weight.');
-    }
-  }
-  if (errors.length) return { ok: false, minor: false, errors };
 
   // Weight-loss plans are not built for people who are already underweight, or aiming to become underweight.
   const currentBmi = bmi(weightKg, heightCm);

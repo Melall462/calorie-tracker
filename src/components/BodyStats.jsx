@@ -145,7 +145,7 @@ function timeToGoal(plan) {
   return `about ${plan.weeks} ${plan.weeks === 1 ? 'week' : 'weeks'} (around ${when})`;
 }
 
-function Plan({ plan, onApply }) {
+export function Plan({ plan, onApply, applyLabel = 'Use these targets' }) {
   const change = plan.change === 0 ? 'None' : `${plan.change > 0 ? '+' : '−'}${Math.abs(plan.change).toLocaleString()} kcal`;
   const time = timeToGoal(plan);
   const { protein, carbs, fat } = plan.macros;
@@ -197,7 +197,7 @@ function Plan({ plan, onApply }) {
       </p>
 
       <button className="btn" onClick={() => onApply({ calories: plan.target, ...plan.macros })}>
-        Use these targets
+        {applyLabel}
       </button>
     </section>
   );

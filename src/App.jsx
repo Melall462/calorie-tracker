@@ -10,6 +10,8 @@ import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
 import MealsPage from './components/MealsPage.jsx';
 import Account from './components/Account.jsx';
+import Onboarding from './components/Onboarding.jsx';
+import { hasExistingData } from './lib/onboarding.js';
 import Icon from './components/Icon.jsx';
 
 const TABS = [
@@ -20,6 +22,9 @@ const TABS = [
 ];
 
 export default function App() {
+  // First-time visitors go through setup. People who already have saved data skip it (see lib/onboarding.js).
+  const [onboarded, setOnboarded] = useLocalStorage('nutrily:onboarded', hasExistingData);
+  const [setupOpen, setSetupOpen] = useState(false); // setup opened again from the Account page
   const [tab, setTab] = useState('today'); // 'edit' is also a valid value, but it has no tab button
   const [date, setDate] = useState(todayKey());
   const [editingId, setEditingId] = useState(null);
@@ -87,7 +92,26 @@ export default function App() {
     setWeights(copy);
   };
 
+  function finishSetup({ profile: answers, targets, weightKg }) {
+    setProfile(answers);
+    setGoals({ ...goals, ...targets });
+    saveWeight(todayKey(), weightKg);
+    setOnboarded(true);
+    setSetupOpen(false);
+    setDate(todayKey());
+    setTab('today');
+  }
+
+  function skipSetup() {
+    setOnboarded(true);
+    setSetupOpen(false);
+  }
+
   const activeTab = tab === 'edit' ? 'today' : tab;
+
+  if (onboarded !== true || setupOpen) {
+    return <Onboarding initialProfile={profile} replay={onboarded === true} onFinish={finishSetup} onSkip={skipSetup} />;
+  }
 
   return (
     <>
@@ -126,6 +150,7 @@ export default function App() {
             weights={weights}
             onSaveWeight={saveWeight}
             onRemoveWeight={removeWeight}
+            onRunSetup={() => setSetupOpen(true)}
           />
         )}
       </main>

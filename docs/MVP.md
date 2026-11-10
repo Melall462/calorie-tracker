@@ -269,3 +269,19 @@ Tested: barcode validation, parsing (including kJ-only and missing data), scalin
 - Button and message wording changed from "goals" to "targets" ("Save targets", "Targets saved.").
 
 Tested in a real browser: the new navigation, building, logging, editing and deleting a meal from the Meals page, every Account section, saving targets, weight add/edit/remove with the chart and goal progress, the calculator and "Use these targets", and persistence after reload. The barcode scanning suite was re-run and still passes.
+
+
+---
+
+## Update: first-run setup (version 0.9)
+
+- **Welcome screen** with a short description and two choices: **Set up my plan** or **Skip for now**.
+- **Four steps** with a progress bar: **About you** (sex, age, height, weight), **Activity** (five choices), **Your goal** (keep, lose or gain, plus goal weight and pace) and **Your plan**. Next stays off until the step is valid, and messages only appear for fields the person has typed in. Back keeps every answer.
+- **Your plan** shows the calculated calorie target, macros, expected pace and time to goal, then **Start tracking** saves the targets, the body stats (so Account > Calculator is already filled in) and today's weight as the first weigh-in. Water target is left alone.
+- **Safety:** it reuses the calculator, so it is adults only (under 18 sees why and can skip), blocks unhealthy goal weights, caps the pace and applies the calorie floors. When the plan cannot be built it says why and offers Back or Skip, never a number.
+- **Who sees it:** only first-time visitors. Anyone with saved Nutrily data from earlier versions is marked as done automatically. Reloading mid-setup starts setup again.
+- **Run setup again** (bottom of Account) replays it with the saved answers filled in; Cancel changes nothing, and finishing replaces today's weigh-in rather than duplicating it.
+- **Accessibility:** focus moves to each new heading, options are real radio buttons, the whole flow works with the keyboard, and progress is announced as "Step X of 4".
+- **Code:** `fieldErrors` in `calculator.js` is now the single source of truth for field validation, shared by the calculator and setup.
+
+Tested: calculator behaviour unchanged after the refactor, field validation and first-run detection (unit), and a real-browser run of skipping, the full flow, every validation and safety case, saved data, replay, existing users and keyboard use. The scanning and navigation suites still pass.

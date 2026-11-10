@@ -19,7 +19,7 @@ const VIEWS = [
 ];
 
 // Everything about you: daily targets, the calculator that works them out from your body stats, and your weight.
-export default function Account({ goals, onSaveGoals, profile, setProfile, weights, onSaveWeight, onRemoveWeight }) {
+export default function Account({ goals, onSaveGoals, profile, setProfile, weights, onSaveWeight, onRemoveWeight, onRunSetup }) {
   const [view, setView] = useState('targets');
   const [applied, setApplied] = useState(0); // changes when the calculator replaces the targets, to reset the form
   const [notice, setNotice] = useState('');
@@ -51,6 +51,13 @@ export default function Account({ goals, onSaveGoals, profile, setProfile, weigh
       {view === 'weight' && (
         <Weight weights={weights} onSave={onSaveWeight} onRemove={onRemoveWeight} goalKg={Number(profile.goalKg) || null} aim={profile.aim} />
       )}
+
+      <p className="muted small account-footer">
+        Want to answer the setup questions again?{' '}
+        <button className="link-btn" onClick={onRunSetup}>
+          Run setup again
+        </button>
+      </p>
     </>
   );
 }

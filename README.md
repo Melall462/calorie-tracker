@@ -20,6 +20,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 - **Meals (Add food tab):** a recipe book. Tap **Add meal** to build a meal from ingredients (from the food list or custom), say how many servings it makes, and add optional method notes. Nutrition per serving is worked out for you. Later, open a saved meal, choose how many servings you ate (1.5 works) and log it to a meal slot in one tap. Meals can be edited and deleted, and editing a recipe never changes entries you already logged.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
+- **First-run setup:** new visitors get a welcome screen and four short steps (About you, Activity, Your goal, Your plan). It uses the calorie calculator, so the same safety rules apply. Finishing saves your targets, your body stats and today's weight as the first weigh-in. People can skip it, and anyone who already has saved data goes straight to the app. Account has a **Run setup again** link.
 - **Navigation:** four tabs, Today, Add food, Meals and Account.
 - **Meals tab:** your recipe book as a page of its own. Build meals from ingredients, edit or delete them, and log one to a meal time in one tap (the same recipe book is also reachable from Add food > Meals).
 - **Account tab:** three sections. **Targets** (daily calories, protein, carbs, fat and water), **Calculator** (body stats and the calorie calculator), and **Weight**. Everything is saved on the device.
@@ -46,6 +47,7 @@ src/
     MealBuilder.jsx        create or edit a saved meal
     EditEntry.jsx          edit a logged food
     Weight.jsx             log weight, trend chart, history (shown inside Account)
+    Onboarding.jsx         the first-run setup flow
     Account.jsx            the Account page: Targets, Calculator and Weight sections
     MealsPage.jsx          the Meals tab: the recipe book as a page
     BodyStats.jsx          body stats form and the calculated plan
@@ -53,6 +55,7 @@ src/
     useLocalStorage.js     saves state to the browser
     barcode.js             barcode check digits, Open Food Facts lookup and parsing
     scanner.js             camera barcode reading and camera error messages
+    onboarding.js          detects people who already have saved data, so they skip setup
     recipes.js             saved meals: per-serving maths and cleaning stored data
     nutrition.js           goals, limits, totals and macro maths
     dates.js               date helpers ("YYYY-MM-DD" strings)
@@ -64,13 +67,14 @@ docs/MVP.md                the plan for this version
 
 ## Data
 
-Stored in the browser under six keys:
+Stored in the browser under seven keys:
 
 - `nutrily:goals`: `{ calories, protein, carbs, fat, water }` (water in ml)
 - `nutrily:entries`: a list of `{ id, date, name, serving, calories, protein, carbs, fat, meal, source }`
 - `nutrily:water`: millilitres per day, e.g. `{ "2026-11-10": 1250 }`
 - `nutrily:weights`: kilograms per day, e.g. `{ "2026-11-10": 72.4 }`
 - `nutrily:meals`: the recipe book, a list of `{ id, name, servings, notes, ingredients: [{ id, name, serving, calories, protein, carbs, fat }] }`. Ingredient numbers are for the whole amount in the recipe, and per-serving values are calculated from them.
+- `nutrily:onboarded`: `true` once setup is finished or skipped. If it is missing but other Nutrily data exists, the app treats the person as an existing user.
 - `nutrily:profile`: body stats and aim for the calculator, kept as text so it works with form inputs
 
 Version 1 stored a single number under `nutrily:goal`. It is carried over automatically, and entries saved before macros existed count as 0 g.
