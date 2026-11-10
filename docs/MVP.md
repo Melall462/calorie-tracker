@@ -198,3 +198,18 @@ Still out: weight tracking, editing entries, accounts, AI features.
 Tested in a real browser: add, edit (rename, recalculate, change meal, move day, cancel), weigh-in add, replace and remove, and persistence after reload.
 
 Still out: accounts, AI features, meal planner and shopping list.
+
+
+---
+
+## Update: body stats and calorie calculator (version 0.4)
+
+- **Body stats:** sex (female, male or average of the two), age, height, current weight, optional body fat %, activity level, aim (lose, keep, gain), goal weight and pace in kg a week.
+- **Plan:** BMR, maintenance, daily target, macros, expected pace and an estimated time and month to reach the goal. "Use these targets" saves the calories and macros to the daily goals (water is left alone).
+- **Weight tab:** shows kilograms to go toward the goal weight.
+- **Safety rules:** adults only, loss capped at 1% of body weight a week, minimum calorie floors, no loss plan for BMI under 18.5 (current or goal), and a not-medical-advice note. Details are in the README.
+- **Storage:** new key `nutrily:profile`.
+
+Tested: calculator maths against hand-worked reference values (including the floors, caps and blocks), plus a real-browser run of the whole flow, persistence and applying targets.
+
+Still out: accounts, AI features, meal planner and shopping list.

@@ -3,13 +3,20 @@ import { formatDay, fromKey, todayKey } from '../lib/dates.js';
 import { toNumber } from '../lib/meals.js';
 import { WEIGHT_LIMITS, round1, weightList } from '../lib/nutrition.js';
 
-export default function Weight({ weights, onSave, onRemove }) {
+export default function Weight({ weights, onSave, onRemove, goalKg, aim }) {
   const [text, setText] = useState('');
   const [day, setDay] = useState(todayKey());
 
   const list = weightList(weights);
   const latest = list.at(-1);
   const change = list.length > 1 ? latest.kg - list[0].kg : null;
+
+  // Progress toward the goal weight set in Goals > Calculate for me.
+  let goalLine = null;
+  if (latest && goalKg && (aim === 'lose' || aim === 'gain')) {
+    const toGo = aim === 'lose' ? latest.kg - goalKg : goalKg - latest.kg;
+    goalLine = toGo > 0.05 ? `${round1(toGo)} kg to go to your goal of ${goalKg} kg` : `You've reached your goal weight of ${goalKg} kg`;
+  }
 
   const value = toNumber(text);
   const [min, max] = WEIGHT_LIMITS;
@@ -35,6 +42,7 @@ export default function Weight({ weights, onSave, onRemove }) {
             kg on {formatDay(latest.date)}
             {change !== null && ` · ${change > 0 ? '+' : ''}${round1(change)} kg since your first entry`}
           </span>
+          {goalLine && <span className="muted">{goalLine}</span>}
         </div>
       ) : (
         <p className="muted">No weigh-ins yet. Add your first below.</p>

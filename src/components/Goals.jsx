@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toNumber } from '../lib/meals.js';
 import { LIMITS, macroCalories } from '../lib/nutrition.js';
+import BodyStats from './BodyStats.jsx';
 
 const FIELDS = [
   { key: 'calories', label: 'Calories', unit: 'kcal' },
@@ -10,11 +11,49 @@ const FIELDS = [
   { key: 'water', label: 'Water', unit: 'ml' },
 ];
 
-export default function Goals({ goals, onSave }) {
+const VIEWS = [
+  { id: 'targets', label: 'My targets' },
+  { id: 'calculator', label: 'Calculate for me' },
+];
+
+export default function Goals({ goals, onSave, profile, setProfile, latestWeight }) {
+  const [view, setView] = useState('targets');
+  const [applied, setApplied] = useState(0); // changes when the calculator replaces the targets, to reset the form
+  const [notice, setNotice] = useState('');
+
+  function applyTargets(targets) {
+    onSave({ ...goals, ...targets });
+    setApplied((n) => n + 1);
+    setNotice('Your calorie and macro targets were updated from your plan.');
+    setView('targets');
+  }
+
+  return (
+    <>
+      <h1>Goals</h1>
+
+      <div className="segmented" role="group" aria-label="Goals view">
+        {VIEWS.map((v) => (
+          <button key={v.id} onClick={() => setView(v.id)} aria-pressed={view === v.id}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'targets' ? (
+        <TargetsForm key={applied} goals={goals} onSave={onSave} notice={notice} />
+      ) : (
+        <BodyStats profile={profile} setProfile={setProfile} latestWeight={latestWeight} onApply={applyTargets} />
+      )}
+    </>
+  );
+}
+
+function TargetsForm({ goals, onSave, notice }) {
   const [draft, setDraft] = useState(() => Object.fromEntries(FIELDS.map((f) => [f.key, String(goals[f.key])])));
   const [saved, setSaved] = useState(false);
 
-  // Blank or invalid text becomes 0, which the range check below will reject (except for macros, where 0 is allowed).
+  // Blank or invalid text becomes 0, which the range check below rejects (except for macros, where 0 is allowed).
   const parsed = Object.fromEntries(FIELDS.map((f) => [f.key, Math.round(toNumber(draft[f.key]))]));
   const problems = FIELDS.filter((f) => {
     const [min, max] = LIMITS[f.key];
@@ -51,8 +90,12 @@ export default function Goals({ goals, onSave }) {
 
   return (
     <>
-      <h1>Goals</h1>
-      <p className="muted">Your daily targets.</p>
+      {notice && (
+        <p className="note" role="status">
+          {notice}
+        </p>
+      )}
+      <p className="muted">Your daily targets. Change them by hand, or use “Calculate for me”.</p>
 
       <form className="pane" onSubmit={submit}>
         <div className="numgrid two">
@@ -89,11 +132,6 @@ export default function Goals({ goals, onSave }) {
         </button>
         {saved && <p role="status">Goals saved.</p>}
       </form>
-
-      <p className="muted small">
-        Not sure what to pick? A calorie calculator or a dietitian can give you a starting point. Nutrily only does the
-        counting.
-      </p>
     </>
   );
 }

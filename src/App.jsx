@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useLocalStorage } from './lib/useLocalStorage.js';
 import { todayKey, formatDay } from './lib/dates.js';
 import { newId } from './lib/id.js';
-import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
+import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals, weightList } from './lib/nutrition.js';
+import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
@@ -24,10 +25,14 @@ export default function App() {
   const [entries, setEntries] = useLocalStorage('nutrily:entries', []);
   const [waterByDate, setWaterByDate] = useLocalStorage('nutrily:water', {}); // { "YYYY-MM-DD": millilitres }
   const [savedWeights, setWeights] = useLocalStorage('nutrily:weights', {}); // { "YYYY-MM-DD": kg }
+  const [savedProfile, setProfile] = useLocalStorage('nutrily:profile', DEFAULT_PROFILE); // body stats, kept as text
 
   // Guard against corrupted or hand-edited values in storage.
   const goals = sanitizeGoals(savedGoals);
   const weights = cleanWeights(savedWeights);
+  const profile = cleanProfile(savedProfile);
+  const latestWeight = weightList(weights).at(-1)?.kg;
+  const goalKg = Number(profile.goalKg) || null;
   const dayEntries = entries.filter((e) => e.date === date);
   const water = Number(waterByDate[date]) || 0;
   const editing = entries.find((e) => e.id === editingId);
@@ -99,8 +104,10 @@ export default function App() {
         )}
         {tab === 'edit' && editing && <EditEntry key={editing.id} entry={editing} onSave={saveEdit} onCancel={cancelEdit} />}
         {tab === 'add' && <AddFood dayLabel={formatDay(date)} onAdd={addEntry} />}
-        {tab === 'weight' && <Weight weights={weights} onSave={saveWeight} onRemove={removeWeight} />}
-        {tab === 'goals' && <Goals goals={goals} onSave={setGoals} />}
+        {tab === 'weight' && <Weight weights={weights} onSave={saveWeight} onRemove={removeWeight} goalKg={goalKg} aim={profile.aim} />}
+        {tab === 'goals' && (
+          <Goals goals={goals} onSave={setGoals} profile={profile} setProfile={setProfile} latestWeight={latestWeight} />
+        )}
       </main>
 
       <nav className="nav" aria-label="Main">
