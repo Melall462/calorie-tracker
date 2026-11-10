@@ -11,7 +11,7 @@ export default function Weight({ weights, onSave, onRemove, goalKg, aim }) {
   const latest = list.at(-1);
   const change = list.length > 1 ? latest.kg - list[0].kg : null;
 
-  // Progress toward the goal weight set in Goals > Calculate for me.
+  // Progress toward the goal weight set in Account > Calculator.
   let goalLine = null;
   if (latest && goalKg && (aim === 'lose' || aim === 'gain')) {
     const toGo = aim === 'lose' ? latest.kg - goalKg : goalKg - latest.kg;
@@ -33,8 +33,6 @@ export default function Weight({ weights, onSave, onRemove, goalKg, aim }) {
 
   return (
     <>
-      <h1>Weight</h1>
-
       {latest ? (
         <div className="weight-now">
           <span className="weight-big">{latest.kg}</span>

@@ -2,21 +2,21 @@ import { useState } from 'react';
 import { useLocalStorage } from './lib/useLocalStorage.js';
 import { todayKey, formatDay } from './lib/dates.js';
 import { newId } from './lib/id.js';
-import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals, weightList } from './lib/nutrition.js';
+import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
 import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import { cleanMeals } from './lib/recipes.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
-import Weight from './components/Weight.jsx';
-import Goals from './components/Goals.jsx';
+import MealsPage from './components/MealsPage.jsx';
+import Account from './components/Account.jsx';
 import Icon from './components/Icon.jsx';
 
 const TABS = [
   { id: 'today', label: 'Today', icon: 'home' },
   { id: 'add', label: 'Add food', icon: 'plus' },
-  { id: 'weight', label: 'Weight', icon: 'scale' },
-  { id: 'goals', label: 'Goals', icon: 'target' },
+  { id: 'meals', label: 'Meals', icon: 'meals' },
+  { id: 'account', label: 'Account', icon: 'user' },
 ];
 
 export default function App() {
@@ -35,8 +35,6 @@ export default function App() {
   const weights = cleanWeights(savedWeights);
   const profile = cleanProfile(savedProfile);
   const meals = cleanMeals(savedMeals);
-  const latestWeight = weightList(weights).at(-1)?.kg;
-  const goalKg = Number(profile.goalKg) || null;
   const dayEntries = entries.filter((e) => e.date === date);
   const loggedDates = new Set(entries.map((e) => e.date)); // days that show a dot in the day strip
   const water = Number(waterByDate[date]) || 0;
@@ -116,9 +114,19 @@ export default function App() {
         {tab === 'add' && (
           <AddFood dayLabel={formatDay(date)} onAdd={addEntry} meals={meals} onSaveMeal={saveMeal} onDeleteMeal={deleteMeal} />
         )}
-        {tab === 'weight' && <Weight weights={weights} onSave={saveWeight} onRemove={removeWeight} goalKg={goalKg} aim={profile.aim} />}
-        {tab === 'goals' && (
-          <Goals goals={goals} onSave={setGoals} profile={profile} setProfile={setProfile} latestWeight={latestWeight} />
+        {tab === 'meals' && (
+          <MealsPage dayLabel={formatDay(date)} meals={meals} onAdd={addEntry} onSaveMeal={saveMeal} onDeleteMeal={deleteMeal} />
+        )}
+        {tab === 'account' && (
+          <Account
+            goals={goals}
+            onSaveGoals={setGoals}
+            profile={profile}
+            setProfile={setProfile}
+            weights={weights}
+            onSaveWeight={saveWeight}
+            onRemoveWeight={removeWeight}
+          />
         )}
       </main>
 

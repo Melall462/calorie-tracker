@@ -7,18 +7,17 @@ const PATHS = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
-  scale: (
+  meals: (
     <>
-      <rect x="3.5" y="4" width="17" height="16" rx="4" />
-      <path d="M8.5 10a3.5 3.5 0 0 1 7 0" />
-      <path d="m12 10 1.8-1.8" />
+      <path d="M3.5 12h17a8.5 8.5 0 0 1-17 0z" />
+      <path d="M9 8.5c0-1.6 1.3-1.6 1.3-3.2" />
+      <path d="M14 8.5c0-1.6 1.3-1.6 1.3-3.2" />
     </>
   ),
-  target: (
+  user: (
     <>
-      <circle cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="4.5" />
-      <circle cx="12" cy="12" r="0.8" />
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
     </>
   ),
 };

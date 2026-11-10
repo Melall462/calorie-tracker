@@ -20,9 +20,12 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 - **Meals (Add food tab):** a recipe book. Tap **Add meal** to build a meal from ingredients (from the food list or custom), say how many servings it makes, and add optional method notes. Nutrition per serving is worked out for you. Later, open a saved meal, choose how many servings you ate (1.5 works) and log it to a meal slot in one tap. Meals can be edited and deleted, and editing a recipe never changes entries you already logged.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
-- **Weight:** log your weight in kg by date (one per day), see the latest weight, the change since your first entry and a trend chart. Edit or remove any weigh-in.
-- **Calculate for me (Goals tab):** enter sex, age, height, weight, optional body fat %, activity level, your aim (lose, keep or gain), goal weight and pace. Nutrily works out resting burn (BMR), maintenance calories, a daily target, macros, the expected pace and roughly when you'll reach your goal. One tap applies the targets. Your stats are saved on the device, and the Weight tab shows how far you are from your goal weight.
-- **My targets (Goals tab):** daily calories, protein, carbs, fat and water. A button fills the macros from your calories (30% protein, 40% carbs, 30% fat).
+- **Navigation:** four tabs, Today, Add food, Meals and Account.
+- **Meals tab:** your recipe book as a page of its own. Build meals from ingredients, edit or delete them, and log one to a meal time in one tap (the same recipe book is also reachable from Add food > Meals).
+- **Account tab:** three sections. **Targets** (daily calories, protein, carbs, fat and water), **Calculator** (body stats and the calorie calculator), and **Weight**. Everything is saved on the device.
+- **Weight (Account > Weight):** log your weight in kg by date (one per day), see the latest weight, the change since your first entry, how far you are from your goal weight, and a trend chart. Edit or remove any weigh-in.
+- **Calculator (Account > Calculator):** enter sex, age, height, weight, optional body fat %, activity level, your aim (lose, keep or gain), goal weight and pace. Nutrily works out resting burn (BMR), maintenance calories, a daily target, macros, the expected pace and roughly when you'll reach your goal. One tap applies the targets. Your stats are saved on the device, and Account > Weight shows how far you are from your goal weight.
+- **Targets (Account > Targets):** daily calories, protein, carbs, fat and water. A button fills the macros from your calories (30% protein, 40% carbs, 30% fat).
 
 ## Project structure
 
@@ -42,8 +45,9 @@ src/
     MealsPane.jsx          the recipe book: saved meals, log, edit, delete
     MealBuilder.jsx        create or edit a saved meal
     EditEntry.jsx          edit a logged food
-    Weight.jsx             log weight, trend chart, history
-    Goals.jsx              My targets and Calculate for me
+    Weight.jsx             log weight, trend chart, history (shown inside Account)
+    Account.jsx            the Account page: Targets, Calculator and Weight sections
+    MealsPage.jsx          the Meals tab: the recipe book as a page
     BodyStats.jsx          body stats form and the calculated plan
   lib/
     useLocalStorage.js     saves state to the browser

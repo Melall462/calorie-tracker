@@ -257,3 +257,15 @@ Tested: barcode validation, parsing (including kJ-only and missing data), scalin
 **Follow-up: failed scans.** When a scan cannot give a result (not found, no calories listed, typo, network error, blocked camera) the Scan tab shows an "Add it as a custom food" button that switches to the Custom form. If the product was found but had no calories, its name is carried across. In the meal builder the same button says "custom ingredient". A second timing bug was also fixed: the camera is now always released if playback fails while it is starting.
 
 **Follow-up: serving sizes.** The Scan result now shows the pack's serving size and nutrition per serving beside per 100 g (or 100 ml). It starts at 1 serving and can switch between servings and grams, keeping the same amount when switching. The pack's printed per-serving values are used when available; otherwise they are worked out from the per-100 values and the serving weight, and the reverse for packs that only list per-serving values. Products with no serving size stay in grams. Log entries read like "2 servings (30 g)". A crash found by the tests (a product with no nutrition data at all) is fixed.
+
+
+---
+
+## Update: Account and Meals pages (version 0.8)
+
+- **Goals became Account.** The page has three sections: **Targets** (the daily calorie, macro and water targets), **Calculator** (body stats and the calorie calculator) and **Weight** (weigh-ins, trend chart and progress toward the goal weight). It says plainly that everything is saved on this device, since there are no logins yet.
+- **Weight moved into Account** so weight tracking is kept, and the old Weight tab is now **Meals**: the recipe book as a page of its own, with a meal time selector, the meal builder, edit, delete and one-tap logging. The Meals section inside Add food still works the same way.
+- **Navigation** is now Today, Add food, Meals, Account. No stored data changed, so existing targets, weights, meals and entries load as before.
+- Button and message wording changed from "goals" to "targets" ("Save targets", "Targets saved.").
+
+Tested in a real browser: the new navigation, building, logging, editing and deleting a meal from the Meals page, every Account section, saving targets, weight add/edit/remove with the chart and goal progress, the calculator and "Use these targets", and persistence after reload. The barcode scanning suite was re-run and still passes.
