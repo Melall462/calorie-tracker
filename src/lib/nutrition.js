@@ -60,3 +60,25 @@ export const macroCalories = ({ protein, carbs, fat }) => protein * 4 + carbs * 
 
 export const round1 = (n) => Math.round(n * 10) / 10;
 export const percent = (value, goal) => (goal > 0 ? Math.min(100, (value / goal) * 100) : 0);
+
+// Weight is stored as { "YYYY-MM-DD": kg }, one entry per day.
+export const WEIGHT_LIMITS = [20, 500]; // kg
+
+export function cleanWeights(saved) {
+  const out = {};
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    for (const [date, kg] of Object.entries(saved)) {
+      const value = Number(kg);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(value) && value >= WEIGHT_LIMITS[0] && value <= WEIGHT_LIMITS[1]) {
+        out[date] = round1(value);
+      }
+    }
+  }
+  return out;
+}
+
+// Oldest first, ready for a chart or list.
+export const weightList = (weights) =>
+  Object.keys(weights)
+    .sort()
+    .map((date) => ({ date, kg: weights[date] }));
