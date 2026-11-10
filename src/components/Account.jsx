@@ -3,6 +3,7 @@ import { toNumber } from '../lib/meals.js';
 import { LIMITS, macroCalories, weightList } from '../lib/nutrition.js';
 import BodyStats from './BodyStats.jsx';
 import Weight from './Weight.jsx';
+import FoodPreferences from './FoodPreferences.jsx';
 
 const FIELDS = [
   { key: 'calories', label: 'Calories', unit: 'kcal' },
@@ -16,10 +17,11 @@ const VIEWS = [
   { id: 'targets', label: 'Targets' },
   { id: 'calculator', label: 'Calculator' },
   { id: 'weight', label: 'Weight' },
+  { id: 'food', label: 'Food' },
 ];
 
 // Everything about you: daily targets, the calculator that works them out from your body stats, and your weight.
-export default function Account({ goals, onSaveGoals, profile, setProfile, weights, onSaveWeight, onRemoveWeight, onRunSetup }) {
+export default function Account({ goals, onSaveGoals, profile, setProfile, weights, onSaveWeight, onRemoveWeight, preferences, onChangePreferences, onRunSetup }) {
   const [view, setView] = useState('targets');
   const [applied, setApplied] = useState(0); // changes when the calculator replaces the targets, to reset the form
   const [notice, setNotice] = useState('');
@@ -36,7 +38,7 @@ export default function Account({ goals, onSaveGoals, profile, setProfile, weigh
   return (
     <>
       <h1>Account</h1>
-      <p className="muted">Your targets, body stats and weight. Everything is saved on this device.</p>
+      <p className="muted">Your targets, body stats, weight and food preferences. Everything is saved on this device.</p>
 
       <div className="segmented" role="group" aria-label="Account sections">
         {VIEWS.map((v) => (
@@ -51,6 +53,8 @@ export default function Account({ goals, onSaveGoals, profile, setProfile, weigh
       {view === 'weight' && (
         <Weight weights={weights} onSave={onSaveWeight} onRemove={onRemoveWeight} goalKg={Number(profile.goalKg) || null} aim={profile.aim} />
       )}
+
+      {view === 'food' && <FoodPreferences value={preferences} onChange={onChangePreferences} />}
 
       <p className="muted small account-footer">
         Want to answer the setup questions again?{' '}

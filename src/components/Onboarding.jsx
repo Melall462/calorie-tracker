@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ACTIVITY, AIMS, PACES, SEX_OPTIONS, calculatePlan, fieldErrors, parse } from '../lib/calculator.js';
 import { round1 } from '../lib/nutrition.js';
 import { Plan } from './BodyStats.jsx';
+import FoodPreferences from './FoodPreferences.jsx';
 
-// First-run setup: welcome, four short steps, then a plan. Finishing saves the body stats, the calorie and macro
-// targets, and today's weight. It reuses the calculator, so it follows the same safety rules.
+// First-run setup: welcome, five short steps, then a plan. Finishing saves the body stats, the calorie and macro
+// targets, food preferences and today's weight. It reuses the calculator, so it follows the same safety rules.
 
-const STEPS = ['About you', 'Activity', 'Your goal', 'Your plan'];
+const STEPS = ['About you', 'Activity', 'Your goal', 'Food', 'Your plan'];
 
 // Which form fields each step is responsible for.
 const fieldsFor = (step, profile) =>
@@ -26,9 +27,10 @@ function Choices({ legend, name, options, value, onChange }) {
   );
 }
 
-export default function Onboarding({ initialProfile, replay, onFinish, onSkip }) {
+export default function Onboarding({ initialProfile, initialPreferences, replay, onFinish, onSkip }) {
   const [step, setStep] = useState(0); // 0 is the welcome screen, 1 to 4 are the steps
   const [profile, setProfile] = useState(initialProfile);
+  const [preferences, setPreferences] = useState(initialPreferences);
   const headingRef = useRef(null);
 
   // Move focus to the new heading and the top of the page whenever the step changes.
@@ -49,11 +51,12 @@ export default function Onboarding({ initialProfile, replay, onFinish, onSkip })
   const canNext = stepFields.every((f) => !errors[f]);
   // Only complain about fields the person has typed in; empty fields just keep Next switched off.
   const shown = stepFields.filter((f) => errors[f] && String(profile[f]).trim() !== '');
-  const plan = step === 4 ? calculatePlan(profile) : null;
+  const plan = step === 5 ? calculatePlan(profile) : null;
 
   const finish = () =>
     onFinish({
       profile,
+      preferences,
       targets: { calories: plan.target, ...plan.macros },
       weightKg: round1(parse(profile.weightKg)),
     });
@@ -196,6 +199,16 @@ export default function Onboarding({ initialProfile, replay, onFinish, onSkip })
         {step === 4 && (
           <>
             <h1 ref={headingRef} tabIndex={-1}>
+              Food preferences
+            </h1>
+            <p className="muted">Optional. Tell us about any diet or allergies, and foods you love or avoid. You can change this later in Account.</p>
+            <FoodPreferences value={preferences} onChange={setPreferences} />
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <h1 ref={headingRef} tabIndex={-1}>
               Your plan
             </h1>
             {plan.ok ? (
@@ -223,12 +236,12 @@ export default function Onboarding({ initialProfile, replay, onFinish, onSkip })
           <button className="btn secondary" onClick={() => setStep(step - 1)}>
             Back
           </button>
-          {step < 4 && (
+          {step < 5 && (
             <button className="btn" onClick={() => setStep(step + 1)} disabled={!canNext}>
               Next
             </button>
           )}
-          {step === 4 && !plan.ok && (
+          {step === 5 && !plan.ok && (
             <button className="btn" onClick={onSkip}>
               {replay ? 'Cancel' : 'Skip setup'}
             </button>

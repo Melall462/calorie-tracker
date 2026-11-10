@@ -3,7 +3,7 @@
 import { round1 } from './nutrition.js';
 
 const API = 'https://world.openfoodfacts.org/api/v2/product/';
-const FIELDS = 'code,product_name,brands,serving_size,serving_quantity,nutriments';
+const FIELDS = 'code,product_name,brands,serving_size,serving_quantity,nutriments,allergens_tags,traces_tags,ingredients_analysis_tags';
 const TIMEOUT_MS = 12000;
 
 // Barcodes are 8, 12, 13 or 14 digits and the last digit is a check digit. Checking it catches typos.
@@ -24,6 +24,8 @@ const num = (v) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
+const tagList = (value) => (Array.isArray(value) ? value.filter((t) => typeof t === 'string').map((t) => t.toLowerCase()) : []);
+
 // Turn the API reply into the small shape the app needs. Returns null when the product is not in the database.
 // The database holds nutrition per 100 g (or 100 ml) and, when the pack lists it, per serving. Any field can be
 // missing, so everything is optional. The result has:
@@ -31,6 +33,7 @@ const num = (v) => {
 //   perServing  nutrition for one serving as printed on the pack, or null if there is no serving size
 //   servingText the serving size exactly as the pack says it (for example "2 biscuits (25 g)")
 //   servingAmount the serving in g or ml, when known
+//   allergens, traces, analysis  the database's allergen, trace and vegan/vegetarian tags (lowercase, may be empty)
 export function parseProduct(json) {
   const p = json?.product;
   if (!json || json.status !== 1 || !p) return null;
@@ -99,6 +102,9 @@ export function parseProduct(json) {
     unit: /ml\b/i.test(servingText) ? 'ml' : 'g',
     servingText,
     servingAmount,
+    allergens: tagList(p.allergens_tags),
+    traces: tagList(p.traces_tags),
+    analysis: tagList(p.ingredients_analysis_tags),
     hasNutrition: per100 !== null || perServing !== null,
     per100,
     perServing,

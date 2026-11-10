@@ -20,10 +20,10 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 - **Meals (Add food tab):** a recipe book. Tap **Add meal** to build a meal from ingredients (from the food list or custom), say how many servings it makes, and add optional method notes. Nutrition per serving is worked out for you. Later, open a saved meal, choose how many servings you ate (1.5 works) and log it to a meal slot in one tap. Meals can be edited and deleted, and editing a recipe never changes entries you already logged.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
-- **First-run setup:** new visitors get a welcome screen and four short steps (About you, Activity, Your goal, Your plan). It uses the calorie calculator, so the same safety rules apply. Finishing saves your targets, your body stats and today's weight as the first weigh-in. People can skip it, and anyone who already has saved data goes straight to the app. Account has a **Run setup again** link.
+- **First-run setup:** new visitors get a welcome screen and five short steps (About you, Activity, Your goal, Food preferences, Your plan). It uses the calorie calculator, so the same safety rules apply. Finishing saves your targets, your body stats, your food preferences and today's weight as the first weigh-in. People can skip it, and anyone who already has saved data goes straight to the app. Account has a **Run setup again** link.
 - **Navigation:** four tabs, Today, Add food, Meals and Account.
 - **Meals tab:** your recipe book as a page of its own. Build meals from ingredients, edit or delete them, and log one to a meal time in one tap (the same recipe book is also reachable from Add food > Meals).
-- **Account tab:** three sections. **Targets** (daily calories, protein, carbs, fat and water), **Calculator** (body stats and the calorie calculator), and **Weight**. Everything is saved on the device.
+- **Account tab:** four sections. **Targets** (daily calories, protein, carbs, fat and water), **Calculator** (body stats and the calorie calculator), **Weight**, and **Food** (food preferences). Everything is saved on the device.
 - **Weight (Account > Weight):** log your weight in kg by date (one per day), see the latest weight, the change since your first entry, how far you are from your goal weight, and a trend chart. Edit or remove any weigh-in.
 - **Calculator (Account > Calculator):** enter sex, age, height, weight, optional body fat %, activity level, your aim (lose, keep or gain), goal weight and pace. Nutrily works out resting burn (BMR), maintenance calories, a daily target, macros, the expected pace and roughly when you'll reach your goal. One tap applies the targets. Your stats are saved on the device, and Account > Weight shows how far you are from your goal weight.
 - **Targets (Account > Targets):** daily calories, protein, carbs, fat and water. A button fills the macros from your calories (30% protein, 40% carbs, 30% fat).
@@ -48,6 +48,7 @@ src/
     EditEntry.jsx          edit a logged food
     Weight.jsx             log weight, trend chart, history (shown inside Account)
     Onboarding.jsx         the first-run setup flow
+    FoodPreferences.jsx    diet, allergies, foods you love and avoid (setup and Account > Food)
     Account.jsx            the Account page: Targets, Calculator and Weight sections
     MealsPage.jsx          the Meals tab: the recipe book as a page
     BodyStats.jsx          body stats form and the calculated plan
@@ -55,6 +56,8 @@ src/
     useLocalStorage.js     saves state to the browser
     barcode.js             barcode check digits, Open Food Facts lookup and parsing
     scanner.js             camera barcode reading and camera error messages
+    preferences.js         food preferences: cleaning, diet and allergen flags, scan warnings
+    PreferencesContext.js  shares the preferences with the search and scan screens
     onboarding.js          detects people who already have saved data, so they skip setup
     recipes.js             saved meals: per-serving maths and cleaning stored data
     nutrition.js           goals, limits, totals and macro maths
@@ -67,7 +70,7 @@ docs/MVP.md                the plan for this version
 
 ## Data
 
-Stored in the browser under seven keys:
+Stored in the browser under eight keys:
 
 - `nutrily:goals`: `{ calories, protein, carbs, fat, water }` (water in ml)
 - `nutrily:entries`: a list of `{ id, date, name, serving, calories, protein, carbs, fat, meal, source }`
@@ -75,6 +78,7 @@ Stored in the browser under seven keys:
 - `nutrily:weights`: kilograms per day, e.g. `{ "2026-11-10": 72.4 }`
 - `nutrily:meals`: the recipe book, a list of `{ id, name, servings, notes, ingredients: [{ id, name, serving, calories, protein, carbs, fat }] }`. Ingredient numbers are for the whole amount in the recipe, and per-serving values are calculated from them.
 - `nutrily:onboarded`: `true` once setup is finished or skipped. If it is missing but other Nutrily data exists, the app treats the person as an existing user.
+- `nutrily:preferences`: `{ diets, avoid, likes, dislikes }`. Diets and allergies are lists of fixed ids; likes and dislikes are short free-text terms.
 - `nutrily:profile`: body stats and aim for the calculator, kept as text so it works with form inputs
 
 Version 1 stored a single number under `nutrily:goal`. It is carried over automatically, and entries saved before macros existed count as 0 g.
@@ -114,3 +118,18 @@ Forest green is for things you act on (the daily hero, buttons, the nav, the sel
 - **Missing data:** Open Food Facts is community-built, so a product may not exist, or may have no calories listed. Both cases show a plain message and an **Add it as a custom food** button that opens the Custom form (with the product's name filled in when it was found but had no calories). The same button appears after a typo in the barcode, a network error, or a blocked camera, so a failed scan never leaves a dead end. The database holds per-100 g values and, when the pack prints them, per-serving values. Nutrily uses the pack's own per-serving numbers when they exist, works one set out from the other when only one is listed, and falls back to grams alone if a product has no serving size. The app tells people to check it against the pack.
 - **Licence and fair use:** Open Food Facts asks apps to credit them (the product card does) and to identify themselves. Browsers do not let a page set its own `User-Agent`, so check their current API guidelines before a public launch.
 - **Testing notes:** the lookup, parsing and scaling are unit tested, and the whole flow was tested in a real browser using a fake camera, a mocked detector and a mocked API. The ZXing fallback needs a real device test (an iPhone is a good one), because it could not be exercised without network access.
+
+## Food preferences
+
+People can record an eating style (vegetarian, vegan, pescatarian, halal, kosher), allergies and intolerances (gluten, dairy, eggs, peanuts, tree nuts, soy, fish, shellfish, sesame), and foods they love or would rather avoid. It is asked during setup and can be edited in Account > Food. It is saved on the device only.
+
+What it does:
+
+- **Search:** when a diet or allergy can be checked, foods that do not fit are hidden by default (with a count, and a switch to show them). Foods that are shown carry tags such as "Not vegan" or "Contains gluten". Foods you love come first and foods you would rather avoid come last. Likes and dislikes match by word ("bananas" finds Banana).
+- **Scan:** products are checked against the allergen, trace and vegan/vegetarian information in Open Food Facts. An allergen the database lists is a strong alert, traces are noted separately, and a note appears when the database does not say whether something is vegan or vegetarian. Foods on your avoid list are noted.
+- **Meal builder:** ingredient search and scanning use the same preferences.
+
+What it cannot do, and says so in the app:
+
+- It cannot promise a food is safe. The built-in tags describe the usual version of each food (oats, for example, are tagged as containing gluten because of cross-contamination), and Open Food Facts is community-entered, with inconsistently named allergen tags and missing data. Anyone who lists an allergy sees a reminder to read the label on every scan, including when the database lists no allergens.
+- It cannot check halal, kosher or pescatarian status. Those are saved, but they do not filter or flag anything.

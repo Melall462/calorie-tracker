@@ -285,3 +285,18 @@ Tested in a real browser: the new navigation, building, logging, editing and del
 - **Code:** `fieldErrors` in `calculator.js` is now the single source of truth for field validation, shared by the calculator and setup.
 
 Tested: calculator behaviour unchanged after the refactor, field validation and first-run detection (unit), and a real-browser run of skipping, the full flow, every validation and safety case, saved data, replay, existing users and keyboard use. The scanning and navigation suites still pass.
+
+
+---
+
+## Update: food preferences (version 1.0)
+
+- **Setup asks about food:** a new optional step (Step 4 of 5) covers eating style, allergies and intolerances, foods you love and foods you would rather avoid. Chips switch on and off, and foods are added as tags (Enter or a comma adds one or several, duplicates are ignored, any can be removed). The step never blocks Next. It is also editable later in **Account > Food**, which saves as you go.
+- **Search uses it:** foods that break a vegetarian, vegan or pescatarian diet or an allergy are hidden by default, with a count and a switch to show them. Tags explain why ("Not vegan", "Contains peanuts"). Loved foods come first, avoided foods last.
+- **Scan uses it:** the barcode lookup now also reads the database's allergen tags, trace tags and vegan/vegetarian analysis. Listed allergens are alerts, traces are mentioned separately, and "the database doesn't say whether this is vegan" is shown instead of assuming. Matching is word-based so messy community tags still match, and peanuts, tree nuts, fish and shellfish are kept apart.
+- **Safety wording:** nothing says a food is safe. Anyone who lists an allergy sees "always read the label" on every scan, including when the database lists no allergens, because no warning is not a guarantee. Halal, kosher and pescatarian are stored but cannot be checked, and the app says so.
+- **Data and privacy:** saved on the device in `nutrily:preferences`, with bad stored values cleaned on load. Anyone who already has saved data skips setup.
+
+Tested: preference logic against realistic Open Food Facts tags (including messy ones), and a real-browser run of the setup step, search filtering, ordering and tags, scan warnings, the Account section, persistence and the meal builder. The earlier suites still pass.
+
+Next step this enables: the AI meal maker can be told these preferences from the start.

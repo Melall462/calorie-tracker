@@ -2,16 +2,31 @@ import { useState } from 'react';
 import { FOODS } from '../lib/foods.js';
 import { toNumber } from '../lib/meals.js';
 import { round1 } from '../lib/nutrition.js';
+import { usePreferences } from '../lib/PreferencesContext.js';
+import { foodWarnings, hasFoodRules, isDisliked, isLiked } from '../lib/preferences.js';
 
 // Both panes call onAdd({ name, serving, calories, protein, carbs, fat }) and leave the rest to the caller.
 
 export function SearchPane({ onAdd, addLabel = 'Add food' }) {
+  const prefs = usePreferences();
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState(null);
   const [servings, setServings] = useState('1');
+  const [onlyFits, setOnlyFits] = useState(true);
 
+  const rules = hasFoodRules(prefs);
   const q = query.trim().toLowerCase();
-  const results = FOODS.filter((f) => f.name.toLowerCase().includes(q));
+  const matches = FOODS.filter((f) => f.name.toLowerCase().includes(q)).map((food) => ({
+    food,
+    warnings: foodWarnings(food, prefs),
+    liked: isLiked(food, prefs),
+    disliked: isDisliked(food, prefs),
+  }));
+  const fitting = rules && onlyFits ? matches.filter((m) => m.warnings.length === 0) : matches;
+  const hidden = matches.length - fitting.length;
+  // Foods you love first, foods you would rather avoid last. Everything else keeps its order.
+  const rank = (m) => (m.disliked ? 1 : m.liked ? -1 : 0);
+  const results = [...fitting].sort((a, b) => rank(a) - rank(b));
   const amount = toNumber(servings);
 
   function add(food) {
@@ -34,11 +49,27 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
         <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Banana, chicken, rice…" />
       </label>
 
+      {rules && (
+        <label className="check">
+          <input type="checkbox" checked={onlyFits} onChange={(e) => setOnlyFits(e.target.checked)} />
+          <span>Only show foods that fit my diet and allergies</span>
+        </label>
+      )}
+      {rules && onlyFits && hidden > 0 && (
+        <p className="muted small" role="status">
+          {hidden} {hidden === 1 ? 'food is' : 'foods are'} hidden by your preferences.
+        </p>
+      )}
+
       {results.length === 0 ? (
-        <p className="muted">No match. Try the Custom tab.</p>
+        <p className="muted">
+          {matches.length > 0
+            ? 'Nothing that fits your preferences matches that. Switch the filter off to see everything, or try the Custom tab.'
+            : 'No match. Try the Custom tab.'}
+        </p>
       ) : (
         <ul className="list">
-          {results.map((food) => {
+          {results.map(({ food, warnings, liked }) => {
             const open = openId === food.id;
             return (
               <li key={food.id} className="result">
@@ -54,6 +85,16 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
                   <span>
                     <span className="entry-name">{food.name}</span>
                     <span className="muted small block">{food.serving}</span>
+                    {(warnings.length > 0 || liked) && (
+                      <span className="tag-line">
+                        {warnings.map((w) => (
+                          <span key={w} className="tag warn">
+                            {w}
+                          </span>
+                        ))}
+                        {liked && <span className="tag liked">You like this</span>}
+                      </span>
+                    )}
                   </span>
                   <strong>{food.calories} kcal</strong>
                 </button>
@@ -64,8 +105,8 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
                       <input inputMode="decimal" value={servings} onChange={(e) => setServings(e.target.value)} />
                     </label>
                     <p className="muted small">
-                      {Math.round(food.calories * amount)} kcal &nbsp; P {round1(food.protein * amount)} g &nbsp; C{' '}
-                      {round1(food.carbs * amount)} g &nbsp; F {round1(food.fat * amount)} g
+                      {Math.round(food.calories * amount)} kcal &nbsp; P {round1(food.protein * amount)} g &nbsp; C {round1(food.carbs * amount)} g &nbsp; F{' '}
+                      {round1(food.fat * amount)} g
                     </p>
                     <button type="button" className="btn" onClick={() => add(food)} disabled={!amount}>
                       {addLabel}
@@ -77,6 +118,8 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
           })}
         </ul>
       )}
+
+      {rules && <p className="muted small">Tags describe the usual version of each food. If you have an allergy, always check the label.</p>}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { newId } from './lib/id.js';
 import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
 import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import { cleanMeals } from './lib/recipes.js';
+import { EMPTY_PREFERENCES, cleanPreferences } from './lib/preferences.js';
+import { PreferencesContext } from './lib/PreferencesContext.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
 import EditEntry from './components/EditEntry.jsx';
@@ -33,6 +35,7 @@ export default function App() {
   const [waterByDate, setWaterByDate] = useLocalStorage('nutrily:water', {}); // { "YYYY-MM-DD": millilitres }
   const [savedWeights, setWeights] = useLocalStorage('nutrily:weights', {}); // { "YYYY-MM-DD": kg }
   const [savedMeals, setMeals] = useLocalStorage('nutrily:meals', []); // the recipe book
+  const [savedPrefs, setPreferences] = useLocalStorage('nutrily:preferences', EMPTY_PREFERENCES); // diet, allergies, foods liked and avoided
   const [savedProfile, setProfile] = useLocalStorage('nutrily:profile', DEFAULT_PROFILE); // body stats, kept as text
 
   // Guard against corrupted or hand-edited values in storage.
@@ -40,6 +43,7 @@ export default function App() {
   const weights = cleanWeights(savedWeights);
   const profile = cleanProfile(savedProfile);
   const meals = cleanMeals(savedMeals);
+  const preferences = cleanPreferences(savedPrefs);
   const dayEntries = entries.filter((e) => e.date === date);
   const loggedDates = new Set(entries.map((e) => e.date)); // days that show a dot in the day strip
   const water = Number(waterByDate[date]) || 0;
@@ -92,8 +96,9 @@ export default function App() {
     setWeights(copy);
   };
 
-  function finishSetup({ profile: answers, targets, weightKg }) {
+  function finishSetup({ profile: answers, preferences: chosen, targets, weightKg }) {
     setProfile(answers);
+    setPreferences(chosen);
     setGoals({ ...goals, ...targets });
     saveWeight(todayKey(), weightKg);
     setOnboarded(true);
@@ -110,11 +115,11 @@ export default function App() {
   const activeTab = tab === 'edit' ? 'today' : tab;
 
   if (onboarded !== true || setupOpen) {
-    return <Onboarding initialProfile={profile} replay={onboarded === true} onFinish={finishSetup} onSkip={skipSetup} />;
+    return <Onboarding initialProfile={profile} initialPreferences={preferences} replay={onboarded === true} onFinish={finishSetup} onSkip={skipSetup} />;
   }
 
   return (
-    <>
+    <PreferencesContext.Provider value={preferences}>
       <header className="app-header">
         <span className="wordmark">Nutrily</span>
       </header>
@@ -150,6 +155,8 @@ export default function App() {
             weights={weights}
             onSaveWeight={saveWeight}
             onRemoveWeight={removeWeight}
+            preferences={preferences}
+            onChangePreferences={setPreferences}
             onRunSetup={() => setSetupOpen(true)}
           />
         )}
@@ -170,6 +177,6 @@ export default function App() {
           </button>
         ))}
       </nav>
-    </>
+    </PreferencesContext.Provider>
   );
 }

@@ -3,6 +3,8 @@ import { digitsOnly, isValidGtin, lookupBarcode, scaleProduct, scaleServings } f
 import { cameraMessage, cameraSupported, startScanner } from '../lib/scanner.js';
 import { toNumber } from '../lib/meals.js';
 import { round1 } from '../lib/nutrition.js';
+import { usePreferences } from '../lib/PreferencesContext.js';
+import { scanWarnings } from '../lib/preferences.js';
 
 // How the entry will read in the log, for example "2 servings (30 g)" or "150 g".
 function servingLabel(product, mode, qty) {
@@ -55,6 +57,7 @@ function NutritionTable({ product }) {
 // Like the other panes it calls onAdd({ name, serving, calories, protein, carbs, fat }) and leaves the rest to the caller.
 // When a scan gives no usable result it offers a button that calls onCustom(name), so the caller can open its Custom form.
 export default function ScanPane({ onAdd, addLabel = 'Add food', onCustom, customLabel = 'Add it as a custom food' }) {
+  const prefs = usePreferences();
   const [typed, setTyped] = useState('');
   const [phase, setPhase] = useState('idle'); // idle, scanning, loading, found, missing or error
   const [message, setMessage] = useState('');
@@ -159,6 +162,7 @@ export default function ScanPane({ onAdd, addLabel = 'Add food', onCustom, custo
     ) : null;
 
   const qty = toNumber(amount);
+  const warnings = product ? scanWarnings(product, prefs) : null;
   // Either set of values can be missing (a pack may list only one), so only scale what exists.
   let totals = null;
   if (product && qty) {
@@ -252,6 +256,30 @@ export default function ScanPane({ onAdd, addLabel = 'Add food', onCustom, custo
         <div className="product-card">
           <h2>{product.name}</h2>
           {product.brand && <p className="muted">{product.brand}</p>}
+
+          {warnings && (
+            <>
+              {warnings.flags.map((text) => (
+                <p key={text} className="note alert" role="alert">
+                  {text}
+                </p>
+              ))}
+              {warnings.traces.map((text) => (
+                <p key={text} className="note" role="status">
+                  {text}
+                </p>
+              ))}
+              {warnings.notes.map((text) => (
+                <p key={text} className="note" role="status">
+                  {text}
+                </p>
+              ))}
+              {warnings.disliked && <p className="note">This is on your list of foods you would rather avoid.</p>}
+              {warnings.reminder && (
+                <p className="muted small">Nutrily can&apos;t confirm that a product is free of your allergens. Always read the label.</p>
+              )}
+            </>
+          )}
 
           {!product.hasNutrition ? (
             <>
