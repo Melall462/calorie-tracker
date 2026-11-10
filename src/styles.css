@@ -324,3 +324,14 @@ input:focus, select:focus { border-color: var(--forest); }
 .notes { white-space: pre-wrap; background: var(--oat); border-radius: var(--r-md); padding: 10px 12px; margin: 4px 0; font-size: 0.95rem; }
 .meal-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .link-btn.danger { color: var(--over); }
+
+/* Barcode scanning */
+.scanner { position: relative; }
+.scanner.off { display: none; }
+.scanner video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; border: 2px solid var(--forest); border-radius: var(--r-lg); }
+.scanner::after { content: ''; position: absolute; inset: 32% 10%; border: 3px solid var(--pistachio); border-radius: 12px; pointer-events: none; }
+.scan-form { display: flex; flex-direction: column; gap: 10px; }
+.product-card { background: var(--linen); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.product-card h2 { font-size: 1.25rem; }
+.product-card p { margin: 0; }
+a { color: var(--forest); text-underline-offset: 3px; }

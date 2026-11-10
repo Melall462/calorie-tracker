@@ -16,6 +16,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 ## What it does
 
 - **Today:** a scrollable strip of the last 60 days (tap one to view it, a dot means something was logged), a headline calories-left number with a progress ring, plus protein, carbs and fat against your goals. A water tracker with quick +250 ml and +500 ml buttons. Entries grouped by meal, each with Edit and Remove. Step back through past days.
+- **Scan (Add food tab):** scan a product's barcode with the camera, or type the number under it. Nutrily looks it up in [Open Food Facts](https://world.openfoodfacts.org) (a free, community-built food database, no API key) and shows the name, brand and nutrition per 100 g or 100 ml. You enter how much you ate (it starts at the serving size on the pack) and add it. The same Scan option is available when adding an ingredient to a saved meal.
 - **Meals (Add food tab):** a recipe book. Tap **Add meal** to build a meal from ingredients (from the food list or custom), say how many servings it makes, and add optional method notes. Nutrition per serving is worked out for you. Later, open a saved meal, choose how many servings you ate (1.5 works) and log it to a meal slot in one tap. Meals can be edited and deleted, and editing a recipe never changes entries you already logged.
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
@@ -37,6 +38,7 @@ src/
     Water.jsx              water progress and quick-add buttons
     AddFood.jsx            meal slot selector and the Search, Custom and Meals tabs
     FoodPicker.jsx         food list search and custom entry, reused for ingredients
+    ScanPane.jsx           barcode scanning, lookup and choosing an amount
     MealsPane.jsx          the recipe book: saved meals, log, edit, delete
     MealBuilder.jsx        create or edit a saved meal
     EditEntry.jsx          edit a logged food
@@ -45,6 +47,8 @@ src/
     BodyStats.jsx          body stats form and the calculated plan
   lib/
     useLocalStorage.js     saves state to the browser
+    barcode.js             barcode check digits, Open Food Facts lookup and parsing
+    scanner.js             camera barcode reading and camera error messages
     recipes.js             saved meals: per-serving maths and cleaning stored data
     nutrition.js           goals, limits, totals and macro maths
     dates.js               date helpers ("YYYY-MM-DD" strings)
@@ -93,3 +97,12 @@ These are estimates. The numbers are a starting point to adjust from real weigh-
 ## Design
 
 Forest green is for things you act on (the daily hero, buttons, the nav, the selected day). Oat is the page, linen is a raised surface, and pistachio is the one bright note, used only on forest. All colours are variables at the top of `src/styles.css`, so changing the theme means editing about a dozen lines. The font is DM Sans.
+
+## Barcode scanning
+
+- **Reading the barcode:** if the browser has the built-in `BarcodeDetector`, Nutrily uses it. Otherwise it loads the ZXing library (`@zxing/browser`) on demand, so people on browsers without `BarcodeDetector` can still scan. Only product barcodes (8, 12, 13 or 14 digits) are accepted, and anything else the camera sees is ignored.
+- **Camera access** needs `https://` or `localhost`. If the camera is blocked or missing, the typed-number box still works. The camera is switched off after a scan, when you press Stop, and when you leave the tab.
+- **Typed numbers** are checked with the barcode check digit before any request is made, which catches most typos.
+- **Missing data:** Open Food Facts is community-built, so a product may not exist, or may have no calories listed. Both cases show a plain message pointing to the Custom tab. Nutrition is per 100 g (or ml), so the amount you ate is used to scale it, and the app tells people to check it against the pack.
+- **Licence and fair use:** Open Food Facts asks apps to credit them (the product card does) and to identify themselves. Browsers do not let a page set its own `User-Agent`, so check their current API guidelines before a public launch.
+- **Testing notes:** the lookup, parsing and scaling are unit tested, and the whole flow was tested in a real browser using a fake camera, a mocked detector and a mocked API. The ZXing fallback needs a real device test (an iPhone is a good one), because it could not be exercised without network access.

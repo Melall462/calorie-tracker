@@ -240,3 +240,16 @@ No data or behaviour changed. Tested in a real browser, including the day strip,
 Tested: the per-serving and scaling maths, cleaning of corrupted data, and a real-browser run of building a meal, logging it, editing, cancelling, deleting, reloading, and checking that Search and Custom logging still work.
 
 Next steps this enables: a meal planner (assign saved meals to days) and a shopping list built from their ingredients.
+
+
+---
+
+## Update: barcode scanning (version 0.7)
+
+- **Scan tab in Add food:** scan a barcode with the camera or type the number. The product is looked up in Open Food Facts, and you choose how much you ate (it starts at the pack's serving size) before adding it. Entries from this tab are saved with `source: "scan"`.
+- **In the meal builder:** a third ingredient source, Scan, so a saved meal can be built from real packaged products.
+- **Safety and manners:** typed numbers are check-digit validated, requests time out after 12 seconds, errors are plain-language, and results are cached for the visit. The camera always turns off, even if Stop is pressed while it is still starting.
+- **Not found / no calories:** the app says so and points to the Custom tab. Data is credited to Open Food Facts on the product card.
+- **New dependencies:** `@zxing/browser` and `@zxing/library`, loaded only when the browser has no built-in `BarcodeDetector`. Run `npm install` after pulling this change.
+
+Tested: barcode validation, parsing (including kJ-only and missing data), scaling and every error path; a real-browser run with a fake camera and mocked API; camera cleanup; scanning inside the meal builder. A bug found by the tests (the camera staying on if stopped while starting) is fixed.

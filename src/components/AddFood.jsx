@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MEALS, defaultMeal } from '../lib/meals.js';
 import { SearchPane, CustomPane } from './FoodPicker.jsx';
+import ScanPane from './ScanPane.jsx';
 import MealsPane from './MealsPane.jsx';
 import MealBuilder from './MealBuilder.jsx';
 
@@ -8,6 +9,7 @@ const MODES = [
   { id: 'search', label: 'Search' },
   { id: 'custom', label: 'Custom' },
   { id: 'meals', label: 'Meals' },
+  { id: 'scan', label: 'Scan' },
 ];
 
 export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMeal }) {
@@ -56,6 +58,7 @@ export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMe
 
       {mode === 'search' && <SearchPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'search' })} />}
       {mode === 'custom' && <CustomPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'manual' })} />}
+      {mode === 'scan' && <ScanPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'scan' })} />}
       {mode === 'meals' && (
         <MealsPane
           meals={meals}

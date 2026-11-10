@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { SearchPane, CustomPane } from './FoodPicker.jsx';
+import ScanPane from './ScanPane.jsx';
 import { toNumber } from '../lib/meals.js';
 import { newId } from '../lib/id.js';
 import { round1, sumEntries } from '../lib/nutrition.js';
 import { MAX_INGREDIENTS, MAX_SERVINGS } from '../lib/recipes.js';
 
 const SOURCES = [
-  { id: 'search', label: 'From food list' },
+  { id: 'search', label: 'Food list' },
   { id: 'custom', label: 'Custom' },
+  { id: 'scan', label: 'Scan' },
 ];
 
 // Create or edit a saved meal: a name, how many servings it makes, ingredients and optional notes.
@@ -96,11 +98,11 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
               </button>
             ))}
           </div>
-          {source === 'search' ? (
-            <SearchPane onAdd={addIngredient} addLabel="Add ingredient" />
-          ) : (
+          {source === 'search' && <SearchPane onAdd={addIngredient} addLabel="Add ingredient" />}
+          {source === 'custom' && (
             <CustomPane onAdd={addIngredient} addLabel="Add ingredient" nameLabel="Ingredient name" namePlaceholder="Soy sauce" />
           )}
+          {source === 'scan' && <ScanPane onAdd={addIngredient} addLabel="Add ingredient" />}
         </div>
 
         <label className="field">
