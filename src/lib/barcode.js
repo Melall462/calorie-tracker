@@ -25,26 +25,72 @@ const num = (v) => {
 };
 
 // Turn the API reply into the small shape the app needs. Returns null when the product is not in the database.
-// Nutrition in the database is per 100 g (or 100 ml). Any field can be missing, so everything is optional.
+// The database holds nutrition per 100 g (or 100 ml) and, when the pack lists it, per serving. Any field can be
+// missing, so everything is optional. The result has:
+//   per100      nutrition per 100 g/ml, or null if it cannot be worked out
+//   perServing  nutrition for one serving as printed on the pack, or null if there is no serving size
+//   servingText the serving size exactly as the pack says it (for example "2 biscuits (25 g)")
+//   servingAmount the serving in g or ml, when known
 export function parseProduct(json) {
   const p = json?.product;
   if (!json || json.status !== 1 || !p) return null;
   const n = p.nutriments || {};
 
-  let calories = num(n['energy-kcal_100g']);
-  if (calories === null) {
-    const kj = num(n['energy_100g']); // some products only list kilojoules
-    if (kj !== null) calories = kj / 4.184;
-  }
-  const protein = num(n.proteins_100g);
-  const carbs = num(n.carbohydrates_100g);
-  const fat = num(n.fat_100g);
-  if (calories === null && (protein !== null || carbs !== null || fat !== null)) {
-    calories = (protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9;
-  }
+  const energy = (kcalKey, kjKey) => {
+    const kcal = num(n[kcalKey]);
+    if (kcal !== null) return kcal;
+    const kj = num(n[kjKey]); // some products only list kilojoules
+    return kj === null ? null : kj / 4.184;
+  };
+
+  let cal100 = energy('energy-kcal_100g', 'energy_100g');
+  let protein100 = num(n.proteins_100g);
+  let carbs100 = num(n.carbohydrates_100g);
+  let fat100 = num(n.fat_100g);
+
+  let calServing = energy('energy-kcal_serving', 'energy_serving');
+  const proteinServing = num(n.proteins_serving);
+  const carbsServing = num(n.carbohydrates_serving);
+  const fatServing = num(n.fat_serving);
 
   const servingText = String(p.serving_size ?? '').trim();
   const servingQty = num(p.serving_quantity);
+  const servingAmount = servingQty !== null && servingQty > 0 && servingQty <= 2000 ? servingQty : null;
+
+  // A pack that only lists per-serving values: work the per-100 values back from the serving size.
+  if (servingAmount !== null) {
+    const up = 100 / servingAmount;
+    if (cal100 === null && calServing !== null) cal100 = calServing * up;
+    if (protein100 === null && proteinServing !== null) protein100 = proteinServing * up;
+    if (carbs100 === null && carbsServing !== null) carbs100 = carbsServing * up;
+    if (fat100 === null && fatServing !== null) fat100 = fatServing * up;
+  }
+  if (cal100 === null && (protein100 !== null || carbs100 !== null || fat100 !== null)) {
+    cal100 = (protein100 ?? 0) * 4 + (carbs100 ?? 0) * 4 + (fat100 ?? 0) * 9;
+  }
+
+  const per100 =
+    cal100 === null ? null : { calories: Math.round(cal100), protein: round1(protein100 ?? 0), carbs: round1(carbs100 ?? 0), fat: round1(fat100 ?? 0) };
+
+  // Per serving: use the pack's own serving values when it has them, otherwise scale the per-100 values.
+  let perServing = null;
+  if (calServing !== null) {
+    const down = servingAmount !== null ? servingAmount / 100 : null;
+    perServing = {
+      calories: Math.round(calServing),
+      protein: round1(proteinServing ?? (down !== null && protein100 !== null ? protein100 * down : 0)),
+      carbs: round1(carbsServing ?? (down !== null && carbs100 !== null ? carbs100 * down : 0)),
+      fat: round1(fatServing ?? (down !== null && fat100 !== null ? fat100 * down : 0)),
+    };
+  } else if (servingAmount !== null && cal100 !== null) {
+    const down = servingAmount / 100;
+    perServing = {
+      calories: Math.round(cal100 * down),
+      protein: round1((protein100 ?? 0) * down),
+      carbs: round1((carbs100 ?? 0) * down),
+      fat: round1((fat100 ?? 0) * down),
+    };
+  }
 
   return {
     code: String(p.code ?? json.code ?? ''),
@@ -52,27 +98,25 @@ export function parseProduct(json) {
     brand: String(p.brands ?? '').split(',')[0].trim(),
     unit: /ml\b/i.test(servingText) ? 'ml' : 'g',
     servingText,
-    servingAmount: servingQty !== null && servingQty > 0 && servingQty <= 2000 ? servingQty : null,
-    hasNutrition: calories !== null,
-    per100: {
-      calories: Math.round(calories ?? 0),
-      protein: round1(protein ?? 0),
-      carbs: round1(carbs ?? 0),
-      fat: round1(fat ?? 0),
-    },
+    servingAmount,
+    hasNutrition: per100 !== null || perServing !== null,
+    per100,
+    perServing,
   };
 }
 
-// Nutrition for eating `amount` grams (or ml) of a product.
-export function scaleProduct(product, amount) {
-  const k = amount / 100;
-  return {
-    calories: Math.round(product.per100.calories * k),
-    protein: round1(product.per100.protein * k),
-    carbs: round1(product.per100.carbs * k),
-    fat: round1(product.per100.fat * k),
-  };
-}
+const scaleBy = (values, k) => ({
+  calories: Math.round(values.calories * k),
+  protein: round1(values.protein * k),
+  carbs: round1(values.carbs * k),
+  fat: round1(values.fat * k),
+});
+
+// Nutrition for eating `amount` grams (or ml) of a product. Needs per100.
+export const scaleProduct = (product, amount) => scaleBy(product.per100, amount / 100);
+
+// Nutrition for eating `servings` servings, using the serving size on the pack. Needs perServing.
+export const scaleServings = (product, servings) => scaleBy(product.perServing, servings);
 
 const cache = new Map(); // remembers answers for this visit, so scanning the same pack twice is instant
 
