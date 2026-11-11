@@ -218,6 +218,17 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 4. **Deploy the function.** With the Supabase CLI: `supabase functions deploy plan-meals`. Or in the dashboard, create a function called `plan-meals` and paste in `index.ts` and `plan.js`.
 5. Open Meals > Planner > Plan with AI while signed in. Until the key is set, the app says "AI planning is not set up yet" and everything else keeps working.
 
+### If AI planning shows an error
+
+The function writes what actually went wrong to its logs: Supabase dashboard > Edge Functions > plan-meals > Logs. The messages people see are deliberately plain:
+
+- "AI planning is not set up yet": the `ANTHROPIC_API_KEY` secret is missing.
+- "Could not read the plan the AI wrote" or "The AI ran out of room": the logs show Claude's stop reason, token usage, and the start and end of its reply.
+- "The AI service is not available right now": Anthropic returned an error (the logs include its message, for example a missing key, no credit, or a spend limit reached).
+- "You have used all 40 AI requests for today": the per-person daily limit.
+
+Notes for developers: the newest Claude models (Sonnet 5.5, Haiku 5.5) **think before they answer, and that thinking counts towards `max_tokens`**, which is why the request allows 12,000 tokens and sets the thinking effort to medium. They also **reject prefilled replies and forced tool calls**, so the function asks for the reply in a fixed shape with structured outputs (`output_config.format`), falls back to plain text once if the model refuses that, and, if a reply is ever cut off, keeps every meal that finished instead of losing the plan. Thinking adds output tokens, so a request costs somewhat more than the plain estimate: still a few cents at most on Sonnet 5.5 and a fraction of a cent on Haiku 5.5 (set `ANTHROPIC_MODEL=claude-haiku-5-5` to use the cheaper model).
+
 ### Known limits
 
 - One person per plan (every meal is one serving; you can change servings in the planner).
@@ -227,4 +238,4 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 
 ### How it was tested
 
-`npm test` includes checks of the safety screen (28), the planner data (14), the AI orchestration (30) and the Edge Function's request checking and prompt (23): hostile and malformed replies, allergens leaking through, failures part-way, cancelling, and prompt injection through cuisines or likes. The screens were tested in a real browser against a fake AI service, including generating a week, separate meals, allergen removal, a limit reached, the AI not being set up, Stop, and the plan syncing between two devices. **Not yet tested:** the real Edge Function (Deno) calling the real Anthropic API. Once it is deployed, generate a one-day plan first and check the result.
+`npm test` includes checks of the safety screen (28), the planner data (14), the AI orchestration (30) and the Edge Function's request checking, prompt, request shape and reply reader (38): hostile and malformed replies, allergens leaking through, failures part-way, cancelling, and prompt injection through cuisines or likes. The screens were tested in a real browser against a fake AI service, including generating a week, separate meals, allergen removal, a limit reached, the AI not being set up, Stop, and the plan syncing between two devices. **Not yet tested:** the real Edge Function (Deno) calling the real Anthropic API. Once it is deployed, generate a one-day plan first and check the result.

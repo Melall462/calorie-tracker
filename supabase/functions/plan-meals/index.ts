@@ -7,7 +7,7 @@
 // Only signed-in users can call it, each can make DAILY_LIMIT calls a day (see the ai_usage migration), and the
 // request is validated and trimmed before anything is sent to the model.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { buildPrompt, readReply, validateRequest } from './plan.js';
+import { buildPrompt, buildRequest, readReply, validateRequest } from './plan.js';
 
 const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5-5';
 const DAILY_LIMIT = 40; // a week-long plan uses 7
@@ -47,20 +47,40 @@ Deno.serve(async (req) => {
       return json({ error: `You have used all ${DAILY_LIMIT} AI requests for today. Try again tomorrow.` }, 429);
     }
 
-    // 5. Ask the model.
+    // 5. Ask the model. First with structured outputs; if the model refuses those options, once more as plain text.
     const { system, user: prompt } = buildPrompt(checked.value);
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 4000, system, messages: [{ role: 'user', content: prompt }] }),
-    });
+    const ask = (structured: boolean) =>
+      fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify(buildRequest({ model: MODEL, system, user: prompt, structured })),
+      });
+    let res = await ask(true);
+    if (res.status === 400) {
+      console.error('Retrying without structured outputs:', await res.text());
+      res = await ask(false);
+    }
     if (!res.ok) {
       console.error('Anthropic API error', res.status, await res.text());
       return json({ error: 'The AI service is not available right now. Try again in a moment.' }, 502);
     }
     const data = await res.json();
-    const text = (data.content ?? []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('');
-    return json(readReply(text));
+    const blocks = (data.content ?? []) as { type: string; text?: string }[];
+    const text = blocks.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
+    try {
+      return json(readReply(text));
+    } catch (readError) {
+      // Say what actually came back, so a failure can be understood from the function logs.
+      console.error('Could not read the AI reply', readError, {
+        stop_reason: data.stop_reason,
+        usage: data.usage,
+        blocks: blocks.map((b) => b.type),
+        head: text.slice(0, 300),
+        tail: text.slice(-300),
+      });
+      const ranOut = data.stop_reason === 'max_tokens';
+      return json({ error: ranOut ? 'The AI ran out of room before it finished. Try again.' : 'Could not read the plan the AI wrote. Try again.' }, 502);
+    }
   } catch (err) {
     console.error(err);
     return json({ error: 'Could not read the plan the AI wrote. Try again.' }, 502);

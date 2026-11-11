@@ -1,6 +1,6 @@
 // Run with: npm test
 // Tests the pure core of the plan-meals Edge Function: request checking, the prompt, and reading the reply.
-import { buildPrompt, extractJson, readReply, validateRequest } from '../supabase/functions/plan-meals/plan.js';
+import { MEALS_SCHEMA, buildPrompt, buildRequest, extractJson, readReply, salvageMeals, validateRequest } from '../supabase/functions/plan-meals/plan.js';
 let fails = 0;
 const ok = (n, c, extra = '') => { console.log(c ? 'PASS' : 'FAIL', n, c ? '' : extra); if (!c) fails++; };
 const good = { mode: 'day', slots: ['breakfast', 'dinner'], targets: { calories: 2200, protein: 150, carbs: 250, fat: 70 }, diets: ['vegan'], avoid: ['peanut'], likes: ['rice'], dislikes: ['liver'], cuisines: ['Thai'], budget: 'low', dayIndex: 2, avoidNames: ['Oat bowl'] };
@@ -38,5 +38,32 @@ ok('extractJson copes with code fences and chatter', extractJson('Here you go:\n
 ok('extractJson throws on no JSON or broken JSON', (() => { try { extractJson('sorry'); return false; } catch { return true; } })() && (() => { try { extractJson('{"meals":[}'); return false; } catch { return true; } })() && (() => { try { extractJson(undefined); return false; } catch { return true; } })());
 ok('readReply keeps at most 12 meals', readReply(JSON.stringify({ meals: Array.from({ length: 40 }, (_, i) => ({ name: `m${i}` })) })).meals.length === 12);
 ok('readReply refuses a reply with no meal list', (() => { try { readReply('{"meals":"nope"}'); return false; } catch { return true; } })() && (() => { try { readReply('{"dishes":[]}'); return false; } catch { return true; } })());
+
+// ---- reading replies that are cut off or damaged (the failures seen in the real logs) ----
+const meal = (name, notes = 'Cook it.') => `{"slot":"dinner","name":"${name}","notes":"${notes}","ingredients":[{"name":"Rice","amount":"100 g","calories":130,"protein":3,"carbs":28,"fat":0.3}]}`;
+const whole = `{"meals":[${meal('A')},${meal('B')},${meal('C')}]}`;
+ok('a complete reply reads normally', readReply(whole).meals.map((m) => m.name).join() === 'A,B,C');
+const cut = whole.slice(0, whole.indexOf('"name":"C"') + 25);
+ok('a reply cut off mid-way keeps the meals that finished (the "position 1514" failure)', readReply(cut).meals.map((m) => m.name).join() === 'A,B');
+ok('cut off in the middle of the first meal gives a clear error, not a crash', (() => { try { readReply(whole.slice(0, 60)); return false; } catch (e) { return e.message.includes('readable meals'); } })());
+const broken = `{"meals":[${meal('A')},{"slot":"dinner","name":"Bad "quoted" meal","notes":"x","ingredients":[]},${meal('C')}]}`;
+ok('one broken meal in the middle is skipped and the others are kept', readReply(broken).meals.map((m) => m.name).join() === 'A,C');
+ok('code fences and chatter around the JSON are ignored', readReply('Sure!\n```json\n' + whole + '\n```\nHope that helps {really}.').meals.length === 3);
+ok('braces, brackets, escaped quotes and backslashes inside text do not confuse it', salvageMeals(`{"meals":[${meal('Curry {hot} [spicy]', 'Stir \\"well\\" then C:\\\\path } ] done')},${meal('Next')}`).map((m) => m.name).join('|') === 'Curry {hot} [spicy]|Next');
+ok('an empty reply, a refusal in plain text, or no meals array all give a clear error', ['', 'I cannot help with that.', '{"note":"hi"}', undefined].every((t) => { try { readReply(t); return false; } catch (e) { return e.message === 'The reply did not contain any readable meals.'; } }));
+ok('truncated JSON with trailing junk still salvages', salvageMeals(`{"meals":[${meal('A')},${meal('B')},{"slot":"lu`).length === 2);
+ok('salvage returns nothing when there is no meals list', salvageMeals('{"dishes":[1,2]}').length === 0 && salvageMeals('').length === 0 && salvageMeals(null).length === 0);
+
+// ---- the request sent to Claude must respect what the newest models accept ----
+const req = buildRequest({ model: 'claude-sonnet-5-5', system: 'S', user: 'U' });
+ok('the allowance is large enough for thinking plus the answer (12,000 tokens)', req.max_tokens >= 8000);
+ok('structured outputs are on, with the schema under output_config.format', req.output_config.format.type === 'json_schema' && req.output_config.format.schema === MEALS_SCHEMA && req.output_config.effort === 'medium');
+ok('no forced tool call, no thinking field, no prefilled reply (all rejected by the newest models)', !('tool_choice' in req) && !('thinking' in req) && !('output_format' in req) && req.messages.length === 1 && req.messages[0].role === 'user');
+ok('the plain-text fallback drops only the structured options', !('output_config' in buildRequest({ model: 'm', system: 'S', user: 'U', structured: false })) && buildRequest({ model: 'm', system: 'S', user: 'U', structured: false }).max_tokens === req.max_tokens);
+const objects = (node) => (node && typeof node === 'object' ? [...(node.type === 'object' ? [node] : []), ...Object.values(node).flatMap(objects)] : []);
+ok('every object in the schema is closed (additionalProperties: false) and lists its required fields', objects(MEALS_SCHEMA).every((o) => o.additionalProperties === false && Array.isArray(o.required) && o.required.length === Object.keys(o.properties).length));
+ok('the schema limits meal times to the four real ones and uses no unsupported keywords', MEALS_SCHEMA.properties.meals.items.properties.slot.enum.join() === 'breakfast,lunch,dinner,snack' && !/"(minimum|maximum|minLength|maxLength|minItems|maxItems|pattern|format)"/.test(JSON.stringify(MEALS_SCHEMA)));
+ok('the system prompt and user message are passed through untouched', req.system === 'S' && req.messages[0].content === 'U' && req.model === 'claude-sonnet-5-5');
+
 console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
 process.exit(fails ? 1 : 0);

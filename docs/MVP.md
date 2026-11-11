@@ -329,3 +329,5 @@ Next steps: password reset, delete account, a privacy policy, and a real-project
 - **Tested:** 160 unit checks (`npm test`) and real-browser runs of manual planning and AI generation against a fake AI service, plus two-device sync. Not yet run against the real Edge Function and Anthropic API.
 
 Next step: a shopping list built from the planned meals' ingredients.
+
+**Follow-up: first real run of the AI function.** The first live attempts failed with "Could not read the plan the AI wrote". The function logs showed why: Sonnet 5.5 always thinks first, the thinking counted against a 4,000-token limit, so replies were sometimes empty or cut off. Fixed by allowing 12,000 tokens with a set thinking effort, requesting structured outputs (schema-valid JSON), falling back to plain text once if refused, keeping any complete meals from a damaged reply, and logging the stop reason and reply ends when something still fails. The fix is in the function only, so no app update was needed, and the repo copy matches what is deployed (version 2).
