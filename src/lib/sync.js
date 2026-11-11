@@ -35,6 +35,16 @@ export function saveMeta(meta) {
 }
 
 // Remove everything Nutrily has saved on this device.
+// Forget which account this device last synced as. Used after the account is deleted: the data left on the device is then
+// just this device's own data, so a new account can take it over instead of it being cleared as "another person's".
+export function clearMeta() {
+  try {
+    localStorage.removeItem(META_KEY);
+  } catch {
+    /* nothing to do */
+  }
+}
+
 export function wipeLocalData() {
   try {
     for (const key of Object.keys(localStorage)) if (key.startsWith('nutrily:')) localStorage.removeItem(key);

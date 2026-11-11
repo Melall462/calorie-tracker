@@ -11,6 +11,8 @@
 //   fetchOne(key)             one row, or null
 //   insert(key, value)        { ok, version } or { conflict: true } if the row already exists
 //   update(key, value, v)     { ok, version } or { conflict: true } if the stored version is no longer `v`
+//   deleteAccount(password)   permanently deletes the signed-in account (the person must type their password again) and signs out
+//                             on this device: { error? }
 //   invokePlanner(payload)    asks the AI planner (an Edge Function) for meals; resolves to { meals }, throws a plain-language Error
 //
 // Cloud sync is optional: with no project URL and key configured, loadBackend() returns null and the app simply
@@ -85,6 +87,25 @@ export function wrap(client) {
     async setPassword(password) {
       const { error } = await client.auth.updateUser({ password });
       return error ? { error: passwordMessage(error) } : {};
+    },
+    async deleteAccount(password) {
+      const { error } = await client.functions.invoke('delete-account', { body: { password } });
+      if (error) {
+        let message = "Your account couldn't be deleted. Nothing was changed, so try again in a moment.";
+        try {
+          const body = await error.context.json(); // the function's own explanation, such as "That password is not right."
+          if (body?.error) message = body.error;
+        } catch {
+          if (String(error.message ?? '').toLowerCase().includes('fetch')) message = "Couldn't reach the server. Nothing was changed. Check your connection and try again.";
+        }
+        return { error: message };
+      }
+      try {
+        await client.auth.signOut({ scope: 'local' }); // the login no longer exists, so just forget it on this device
+      } catch {
+        /* the account is gone either way */
+      }
+      return {};
     },
     async fetchChanged(cursor) {
       const rows = [];

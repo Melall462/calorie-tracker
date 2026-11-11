@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadBackend } from './backend.js';
-import { loadMeta, runSync, wipeLocalData } from './sync.js';
+import { clearMeta, loadMeta, runSync, wipeLocalData } from './sync.js';
 import { RECOVERY_FLAG, cleanLinkFromUrl, readEmailLink } from './recoveryLink.js';
 
 const DEBOUNCE_MS = 2000;
@@ -36,6 +36,7 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
   const run = useRef(null); // the sync in progress, if any
   const again = useRef(false); // another sync was asked for while one was running
   const timer = useRef(null);
+  const closing = useRef(false); // the account is being deleted, so no more syncing
 
   useEffect(() => {
     let off = false;
@@ -102,7 +103,7 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
   // Returns true if the data is now safely in the cloud. Calling it while a sync runs waits for that sync.
   const syncNow = useCallback(() => {
     const { backend: b, userId: uid } = latest.current;
-    if (!b || !uid) return Promise.resolve(false);
+    if (!b || !uid || closing.current) return Promise.resolve(false);
     if (run.current) {
       again.current = true;
       return run.current;
@@ -167,6 +168,39 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
   const signUp = useCallback((email, password) => latest.current.backend.signUp(email, password), []);
   const resetPassword = useCallback((email) => latest.current.backend.resetPassword(email), []);
   const setPassword = useCallback((password) => latest.current.backend.setPassword(password), []);
+  // Permanently delete the account. The password is checked again on the server. With clearDevice, the data on this
+  // device is wiped too; otherwise it stays and Nutrily carries on without an account.
+  const deleteAccount = useCallback(async (password, { clearDevice = false } = {}) => {
+    closing.current = true; // stop any new sync, and let one already running finish first
+    clearTimeout(timer.current);
+    try {
+      await run.current;
+    } catch {
+      /* it handles its own errors */
+    }
+    let result;
+    try {
+      result = await latest.current.backend.deleteAccount(password);
+    } catch (e) {
+      closing.current = false; // the request never completed, so nothing was deleted and syncing carries on
+      throw e;
+    }
+    if (result.error) {
+      closing.current = false; // nothing was deleted, so syncing carries on as before
+      return result;
+    }
+    clearMeta();
+    closing.current = false;
+    if (clearDevice) {
+      wipeLocalData();
+      window.location.reload();
+    } else {
+      setStatus('idle');
+      setLastSynced(null);
+      setError('');
+    }
+    return {};
+  }, []);
   const signOut = useCallback(async () => {
     await latest.current.backend.signOut();
     setStatus('idle');
@@ -196,6 +230,7 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
     signUp,
     resetPassword,
     setPassword,
+    deleteAccount,
     recovery,
     endRecovery,
     signOut,

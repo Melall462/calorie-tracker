@@ -65,6 +65,20 @@ export class FakeServer {
     this.sessions.set(token, entry.userId);
     return `#access_token=${token}&refresh_token=r&expires_in=3600&token_type=bearer&type=recovery`;
   }
+  // ---- delete account: the password is checked again, then the login goes and, with it, all of their rows (cascade) ----
+  deleteAccount(token, password) {
+    this.check();
+    const who = this.userOf(token);
+    if (!who) return { error: 'Sign in again to delete your account.' };
+    if (!password) return { error: 'Enter your password to confirm.' };
+    const u = this.users.get(who.user.email);
+    if (u.password !== password) return { error: 'That password is not right.' };
+    this.users.delete(who.user.email);
+    for (const [t, id] of [...this.sessions]) if (id === u.id) this.sessions.delete(t);
+    this.rows.delete(u.id);
+    this.deleted = (this.deleted ?? 0) + 1;
+    return {};
+  }
   userOf(token) {
     this.check();
     const id = this.sessions.get(token);

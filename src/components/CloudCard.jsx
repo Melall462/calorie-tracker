@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCloud } from '../lib/CloudContext.js';
 import AuthForm from './AuthForm.jsx';
+import DeleteAccount from './DeleteAccount.jsx';
 
 // The account panel at the top of the Account page. Shows nothing at all when cloud sync is not set up.
 export default function CloudCard() {
@@ -8,6 +9,8 @@ export default function CloudCard() {
   const [formOpen, setFormOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState('');
+  const [deleting, setDeleting] = useState(false); // the delete-account screen is open
+  const [deleted, setDeleted] = useState(false); // the account was just deleted
 
   if (!cloud.available) return null;
 
@@ -23,6 +26,11 @@ export default function CloudCard() {
     return (
       <section className="cloud card" aria-label="Account sync">
         <h2>Back up and sync</h2>
+        {deleted && !formOpen && (
+          <p className="note" role="status">
+            Your account and everything stored in the cloud for it has been deleted. The data on this device is still here, and Nutrily keeps working without an account.
+          </p>
+        )}
         <p className="muted">Create an account to keep your data safe and use Nutrily on your other devices. Everything works without one.</p>
         {formOpen ? (
           <AuthForm onDone={() => setFormOpen(false)} />
@@ -31,6 +39,20 @@ export default function CloudCard() {
             Sign in or create account
           </button>
         )}
+      </section>
+    );
+  }
+
+  if (deleting) {
+    return (
+      <section className="cloud card" aria-label="Delete account">
+        <DeleteAccount
+          onCancel={() => setDeleting(false)}
+          onDeleted={() => {
+            setDeleting(false);
+            setDeleted(true);
+          }}
+        />
       </section>
     );
   }
@@ -83,6 +105,9 @@ export default function CloudCard() {
           Sign out and clear this device
         </button>
       )}
+      <button className="link-btn danger" onClick={() => setDeleting(true)}>
+        Delete my account
+      </button>
       {problem && (
         <p className="error" role="alert">
           {problem}

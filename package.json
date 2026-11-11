@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/sync.test.mjs && node tests/recovery.test.mjs && node tests/myfoods.test.mjs && node tests/safety.test.mjs && node tests/plan.test.mjs && node tests/plan-ai.test.mjs && node tests/recipes.test.mjs && node tests/plan-function.test.mjs"
+    "test": "node tests/sync.test.mjs && node tests/recovery.test.mjs && node tests/account.test.mjs && node tests/myfoods.test.mjs && node tests/safety.test.mjs && node tests/plan.test.mjs && node tests/plan-ai.test.mjs && node tests/recipes.test.mjs && node tests/plan-function.test.mjs && node tests/delete-account.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
