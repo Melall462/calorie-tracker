@@ -1,10 +1,12 @@
 // The only file that knows about Supabase. Everything else talks to the small interface returned by loadBackend():
 //
 //   getSession()              the signed-in session { user: { id, email } }, or null
-//   onAuthChange(callback)    called whenever someone signs in or out; returns a function that stops listening
+//   onAuthChange(callback)    called with (session, event) whenever someone signs in or out; returns a function that stops listening
 //   signIn(email, password)   { error? }
 //   signUp(email, password)   { error?, needsConfirmation? }
 //   signOut()
+//   resetPassword(email)      emails a link for choosing a new password: { error? }
+//   setPassword(password)     sets a new password for the signed-in account: { error? }
 //   fetchChanged(cursor)      rows from sync_units changed after `cursor` (all of them if null)
 //   fetchOne(key)             one row, or null
 //   insert(key, value)        { ok, version } or { conflict: true } if the row already exists
@@ -31,6 +33,15 @@ const authMessage = (error) => {
   return error?.message || 'Something went wrong. Try again.';
 };
 
+// What went wrong choosing a new password, in plain words.
+const passwordMessage = (error) => {
+  const text = String(error?.message ?? '').toLowerCase();
+  if (text.includes('different from the old')) return 'Your new password must be different from your old one.';
+  if (text.includes('session') || text.includes('jwt') || text.includes('expired') || text.includes('not authenticated')) return 'That link has expired. Go back and ask for a new one.';
+  if (text.includes('weak') || text.includes('easy to guess') || text.includes('pwned') || text.includes('compromised')) return 'That password is too easy to guess. Try a longer one, or mix in numbers.';
+  return authMessage(error);
+};
+
 const problem = (error) => {
   const text = String(error?.message ?? '').toLowerCase();
   return new Error(
@@ -40,7 +51,7 @@ const problem = (error) => {
   );
 };
 
-function wrap(client) {
+export function wrap(client) {
   const columns = 'key,value,version,updated_at';
   return {
     async getSession() {
@@ -48,7 +59,7 @@ function wrap(client) {
       return data.session ? toSession(data.session) : null;
     },
     onAuthChange(callback) {
-      const { data } = client.auth.onAuthStateChange((_event, session) => callback(session ? toSession(session) : null));
+      const { data } = client.auth.onAuthStateChange((event, session) => callback(session ? toSession(session) : null, event));
       return () => data.subscription.unsubscribe();
     },
     async signIn(email, password) {
@@ -62,6 +73,18 @@ function wrap(client) {
     },
     async signOut() {
       await client.auth.signOut();
+    },
+    async resetPassword(email) {
+      // The link in the email brings the person back to this site, which must be in the project's allowed redirect URLs.
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      if (!error) return {}; // the same answer whether or not an account exists, so nobody can use this to find out who has one
+      const text = String(error.message ?? '').toLowerCase();
+      if (text.includes('rate limit') || text.includes('too many') || text.includes('seconds')) return { error: 'Too many reset emails were requested. Wait a while and try again.' };
+      return { error: authMessage(error) };
+    },
+    async setPassword(password) {
+      const { error } = await client.auth.updateUser({ password });
+      return error ? { error: passwordMessage(error) } : {};
     },
     async fetchChanged(cursor) {
       const rows = [];

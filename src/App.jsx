@@ -12,6 +12,7 @@ import { EMPTY_PREFERENCES, cleanPreferences } from './lib/preferences.js';
 import { PreferencesContext } from './lib/PreferencesContext.js';
 import { CloudContext } from './lib/CloudContext.js';
 import { useCloudSync } from './lib/useCloudSync.js';
+import PasswordRecovery from './components/PasswordRecovery.jsx';
 import { applyUnits as applyUnitsToState, collectUnits } from './lib/units.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
@@ -182,6 +183,15 @@ export default function App() {
   }
 
   const activeTab = tab === 'edit' ? 'today' : tab;
+
+  // Someone opened the link in a password-reset email: choosing a new password comes before anything else.
+  if (cloud.recovery) {
+    return (
+      <CloudContext.Provider value={cloud}>
+        <PasswordRecovery />
+      </CloudContext.Provider>
+    );
+  }
 
   if (onboarded !== true || setupOpen) {
     return (

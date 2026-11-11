@@ -455,3 +455,9 @@ h1:focus { outline: none; }
 
 /* The meal builder has four ingredient sources, so keep each label on one line */
 .builder-add .segmented button { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+
+/* Password box with a Show / Hide button inside its right edge */
+.password-wrap { position: relative; display: flex; }
+.password-wrap input { width: 100%; padding-right: 76px; }
+.password-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-height: 40px; padding: 0 14px; background: none; border: 0; border-radius: 999px; font: 700 0.85rem var(--font); color: var(--forest); cursor: pointer; }
+.password-toggle:hover { background: var(--track); }

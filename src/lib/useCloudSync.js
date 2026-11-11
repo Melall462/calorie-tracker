@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadBackend } from './backend.js';
 import { loadMeta, runSync, wipeLocalData } from './sync.js';
+import { RECOVERY_FLAG, cleanLinkFromUrl, readEmailLink } from './recoveryLink.js';
 
 const DEBOUNCE_MS = 2000;
 
@@ -14,6 +15,19 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
   const [status, setStatus] = useState('idle'); // idle, syncing or error
   const [lastSynced, setLastSynced] = useState(null);
   const [error, setError] = useState('');
+  // Choosing a new password after an emailed link: 'set' (the link worked), 'expired' (it did not), or null.
+  // Read from the address bar straight away, before the Supabase library clears it.
+  const [recovery, setRecovery] = useState(() => {
+    const link = readEmailLink(window.location.hash, window.location.search);
+    try {
+      if (link === 'recovery') sessionStorage.setItem(RECOVERY_FLAG, '1');
+      if (link === 'recovery') return 'set';
+      if (link === 'expired') return 'expired';
+      return sessionStorage.getItem(RECOVERY_FLAG) === '1' ? 'set' : null; // a reload part-way through keeps its place
+    } catch {
+      return link === 'recovery' ? 'set' : link;
+    }
+  });
 
   // Always the newest functions and account, so a sync that runs later never uses stale data.
   const latest = useRef({});
@@ -44,12 +58,46 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
       .getSession()
       .then((s) => !off && setSession(s))
       .catch(() => !off && setSession(null));
-    const stop = backend.onAuthChange((s) => !off && setSession(s));
+    const stop = backend.onAuthChange((s, event) => {
+      if (off) return;
+      setSession(s);
+      if (event === 'PASSWORD_RECOVERY' && s) {
+        try {
+          sessionStorage.setItem(RECOVERY_FLAG, '1');
+        } catch {
+          /* not important */
+        }
+        setRecovery('set');
+      }
+    });
     return () => {
       off = true;
       stop();
     };
   }, [backend]);
+
+  const endRecovery = useCallback(() => {
+    try {
+      sessionStorage.removeItem(RECOVERY_FLAG);
+    } catch {
+      /* not important */
+    }
+    cleanLinkFromUrl();
+    setRecovery(null);
+  }, []);
+
+  // A reset link that did not produce an account (used already, or too old), or no cloud at all: say so rather than hang.
+  useEffect(() => {
+    if (recovery !== 'set') return;
+    if (backend === null || session === null) {
+      try {
+        sessionStorage.removeItem(RECOVERY_FLAG);
+      } catch {
+        /* not important */
+      }
+      setRecovery(backend === null ? null : 'expired');
+    }
+  }, [recovery, backend, session]);
 
   // Returns true if the data is now safely in the cloud. Calling it while a sync runs waits for that sync.
   const syncNow = useCallback(() => {
@@ -117,6 +165,8 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
   const planMeals = useCallback((payload) => latest.current.backend.invokePlanner(payload), []);
   const signIn = useCallback((email, password) => latest.current.backend.signIn(email, password), []);
   const signUp = useCallback((email, password) => latest.current.backend.signUp(email, password), []);
+  const resetPassword = useCallback((email) => latest.current.backend.resetPassword(email), []);
+  const setPassword = useCallback((password) => latest.current.backend.setPassword(password), []);
   const signOut = useCallback(async () => {
     await latest.current.backend.signOut();
     setStatus('idle');
@@ -144,6 +194,10 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
     planMeals,
     signIn,
     signUp,
+    resetPassword,
+    setPassword,
+    recovery,
+    endRecovery,
     signOut,
     signOutAndClear,
   };
