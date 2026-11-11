@@ -68,7 +68,9 @@ Deno.serve(async (req) => {
     const blocks = (data.content ?? []) as { type: string; text?: string }[];
     const text = blocks.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
     try {
-      return json(readReply(text));
+      const reply = readReply(text);
+      console.log('AI usage', { model: MODEL, usage: data.usage, meals: reply.meals.length }); // so real costs can be checked in the logs
+      return json(reply);
     } catch (readError) {
       // Say what actually came back, so a failure can be understood from the function logs.
       console.error('Could not read the AI reply', readError, {

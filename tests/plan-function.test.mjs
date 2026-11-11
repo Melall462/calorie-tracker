@@ -65,5 +65,23 @@ ok('every object in the schema is closed (additionalProperties: false) and lists
 ok('the schema limits meal times to the four real ones and uses no unsupported keywords', MEALS_SCHEMA.properties.meals.items.properties.slot.enum.join() === 'breakfast,lunch,dinner,snack' && !/"(minimum|maximum|minLength|maxLength|minItems|maxItems|pattern|format)"/.test(JSON.stringify(MEALS_SCHEMA)));
 ok('the system prompt and user message are passed through untouched', req.system === 'S' && req.messages[0].content === 'U' && req.model === 'claude-sonnet-5-5');
 
+
+// ---- partial days (some meals already come from the recipe book) and step-by-step instructions ----
+const base = { mode: 'day', slots: ['breakfast', 'dinner'], targets: { calories: 1500, protein: 100, carbs: 150, fat: 50 }, dayIndex: 2 };
+const full = validateRequest({ ...base });
+ok('a normal day still has an 800 kcal floor and no partial fields', full.value.targets.calories === 1500 && validateRequest({ ...base, targets: { calories: 300 } }).value.targets.calories === 800 && !('partial' in full.value) && !('existing' in full.value));
+const part = validateRequest({ ...base, partial: true, targets: { calories: 450, protein: 30, carbs: 50, fat: 15 }, existing: [{ name: ' Chicken rice bowl ', slot: 'lunch', calories: 716.4 }] });
+ok('a partial day keeps a small leftover target (down to 100 kcal) and lists what is already planned', part.value.partial === true && part.value.targets.calories === 450 && validateRequest({ ...base, partial: true, targets: { calories: 20 } }).value.targets.calories === 100 && part.value.existing.length === 1 && part.value.existing[0].name === 'Chicken rice bowl' && part.value.existing[0].calories === 716);
+ok('"partial" is ignored unless exactly true, and for the meals mode', !('partial' in validateRequest({ ...base, partial: 'yes' }).value) && !('partial' in validateRequest({ mode: 'meals', slots: ['lunch'], partial: true }).value));
+const messy = validateRequest({ ...base, partial: true, existing: [null, 7, { name: 5, slot: 'lunch' }, { name: 'x', slot: 'brunch' }, { name: '   ', slot: 'lunch' }, ...Array.from({ length: 10 }, (_, i) => ({ name: 'M' + i + 'y'.repeat(200), slot: 'snack', calories: 99999 }))] });
+ok('junk in the planned-meals list is dropped, the list is capped at 6, names at 80 characters, calories at 5000', messy.value.existing.length === 6 && messy.value.existing.every((e) => e.name.length <= 80 && e.calories === 5000 && e.slot === 'snack'));
+const partPrompt = buildPrompt(part.value);
+ok('the partial prompt names the meals already planned, the leftover target and only the remaining meal times', partPrompt.user.includes('Plan part of one day (day 3 of the plan)') && partPrompt.user.includes('lunch: Chicken rice bowl (716 kcal)') && partPrompt.user.includes('breakfast, dinner') && partPrompt.user.includes('about 450 kcal') && !partPrompt.user.includes('Share the calories sensibly'));
+ok('a normal day prompt is unchanged', buildPrompt(full.value).user.includes('Plan one day (day 3 of the plan)') && buildPrompt(full.value).user.includes('about 1500 kcal (within 5%)'));
+ok('instructions are requested as steps, not a short note', buildPrompt(full.value).system.includes('"steps"') && !buildPrompt(full.value).system.includes('"notes"') && buildPrompt(full.value).system.includes('4 to 8'));
+const stepsProps = MEALS_SCHEMA.properties.meals.items.properties;
+ok('the schema asks for a list of steps and no longer for notes', stepsProps.steps.type === 'array' && stepsProps.steps.items.type === 'string' && !('notes' in stepsProps) && MEALS_SCHEMA.properties.meals.items.required.includes('steps'));
+ok('a reply with steps reads back with the steps intact', readReply('{"meals":[{"slot":"dinner","name":"A","steps":["Boil {water}.","Add rice."],"ingredients":[]}]}').meals[0].steps.join('|') === 'Boil {water}.|Add rice.');
+
 console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
 process.exit(fails ? 1 : 0);

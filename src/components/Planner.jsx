@@ -6,11 +6,12 @@ import { SERVING_CHOICES, dayPlan, dayTotals, mondayOf, weekDates } from '../lib
 import { portion } from '../lib/recipes.js';
 import { mealFlags } from '../lib/mealSafety.js';
 import { usePreferences } from '../lib/PreferencesContext.js';
+import MealDetails from './MealDetails.jsx';
 
 const short = (key) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 // One week at a time: pick a day, then see and edit what is planned for each meal time.
-export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, onServings, onLog, onUndo, onClearWeek, onGenerate }) {
+export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, onServings, onLog, onUndo, onClearWeek, onGenerate, onOpenRecipe }) {
   const prefs = usePreferences();
   const today = todayKey();
   const [weekStart, setWeekStart] = useState(mondayOf(focus ?? today));
@@ -19,12 +20,14 @@ export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, on
   const [picking, setPicking] = useState(null); // the meal time being added to
   const [query, setQuery] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [openId, setOpenId] = useState(null); // the planned meal whose ingredients and method are showing
 
   function goWeek(delta) {
     const next = shiftDay(weekStart, delta * 7);
     setWeekStart(next);
     setSelected(weekDates(next).includes(today) ? today : next);
     setPicking(null);
+    setOpenId(null);
     setConfirmClear(false);
   }
 
@@ -62,6 +65,7 @@ export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, on
             onClick={() => {
               setSelected(d);
               setPicking(null);
+              setOpenId(null);
             }}
             aria-current={d === selected ? 'date' : undefined}
             aria-label={fromKey(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -94,6 +98,7 @@ export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, on
         <p className="muted small">
           Planned: P {totals.protein} g &nbsp; C {totals.carbs} g &nbsp; F {totals.fat} g
         </p>
+        {items.length > 0 && <p className="muted small">Tap a meal to see what you need and how to make it.</p>}
         {isFuture && items.length > 0 && <p className="muted small">You can log planned meals on the day, or after it.</p>}
 
         {MEALS.map((slot) => {
@@ -126,10 +131,16 @@ export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, on
                   }
                   const p = portion(meal, item.servings);
                   const flags = mealFlags(meal, prefs);
+                  const open = openId === item.id;
                   return (
                     <li className={item.done ? 'entry plan-row done' : 'entry plan-row'} key={item.id}>
                       <div className="entry-main">
-                        <span className="entry-name">{meal.name}</span>
+                        <button className="name-btn" onClick={() => setOpenId(open ? null : item.id)} aria-expanded={open} aria-controls={`details-${item.id}`}>
+                          <span className="entry-name">{meal.name}</span>
+                          <span className="chev" aria-hidden="true">
+                            {open ? '▴' : '▾'}
+                          </span>
+                        </button>
                         <span className="tag-line">
                           {meal.ai && <span className="tag ai">AI-written</span>}
                           {flags.hard.map((w) => (
@@ -174,6 +185,11 @@ export default function Planner({ plan, meals, goals, focus, onAdd, onRemove, on
                           </button>
                         </div>
                       </div>
+                      {open && (
+                        <div className="plan-details" id={`details-${item.id}`}>
+                          <MealDetails meal={meal} servings={item.servings} onOpenRecipe={onOpenRecipe} />
+                        </div>
+                      )}
                     </li>
                   );
                 })}

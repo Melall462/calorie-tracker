@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { portion } from '../lib/recipes.js';
 import { toNumber } from '../lib/meals.js';
 import { mealFlags } from '../lib/mealSafety.js';
 import { usePreferences } from '../lib/PreferencesContext.js';
+import MealDetails from './MealDetails.jsx';
 
 // The recipe book: saved meals you can log in one tap, plus a button to add a new one.
-export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, onLog }) {
+export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, onLog, initialOpenId = null }) {
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState(initialOpenId); // a recipe can open already expanded (from the planner)
   const [servings, setServings] = useState('1');
   const [confirmId, setConfirmId] = useState(null);
+
+  useEffect(() => {
+    if (initialOpenId) document.getElementById(`recipe-${initialOpenId}`)?.scrollIntoView?.({ block: 'center' });
+  }, [initialOpenId]);
 
   const q = query.trim().toLowerCase();
   const shown = meals.filter((m) => m.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
@@ -50,7 +55,7 @@ export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, o
                 const flags = mealFlags(meal, prefs).hard;
                 const eating = portion(meal, eaten || 0);
                 return (
-                  <li key={meal.id} className="result">
+                  <li key={meal.id} id={`recipe-${meal.id}`} className="result">
                     <button
                       type="button"
                       className="result-btn"
@@ -83,19 +88,7 @@ export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, o
 
                     {open && (
                       <div className="result-panel">
-                        <p className="muted small">
-                          Per serving: P {perServing.protein} g &nbsp; C {perServing.carbs} g &nbsp; F {perServing.fat} g
-                        </p>
-                        <ul className="mini-list">
-                          {meal.ingredients.map((i) => (
-                            <li key={i.id}>
-                              {i.name}
-                              {i.serving ? <span className="muted">, {i.serving}</span> : null}
-                            </li>
-                          ))}
-                        </ul>
-                        {meal.ai && <p className="note">Written by the AI. Check the ingredients against your allergies before you cook it.</p>}
-                        {meal.notes && <p className="notes">{meal.notes}</p>}
+                        <MealDetails meal={meal} />
 
                         <label className="field compact">
                           <span>Servings you ate</span>

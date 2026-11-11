@@ -26,11 +26,14 @@ export function validateRequest(body) {
   const slots = pick(body.slots, SLOTS);
   if (slots.length === 0) return { ok: false, error: 'Choose at least one meal time.' };
   const t = body.targets && typeof body.targets === 'object' ? body.targets : {};
+  // A "partial" day already has some meals from the person's recipe book, so the AI only fills the rest and the target
+  // it is given is just what is left over, which can be small.
+  const partial = body.mode === 'day' && body.partial === true;
   const value = {
     mode: body.mode,
     slots,
     targets: {
-      calories: Math.round(number(t.calories, 800, 6000, 2000)),
+      calories: Math.round(number(t.calories, partial ? 100 : 800, 6000, 2000)),
       protein: Math.round(number(t.protein, 0, 1000, 120)),
       carbs: Math.round(number(t.carbs, 0, 1000, 230)),
       fat: Math.round(number(t.fat, 0, 1000, 65)),
@@ -44,18 +47,28 @@ export function validateRequest(body) {
     avoidNames: strings(body.avoidNames, 40, 80),
   };
   if (body.mode === 'meals') value.count = Math.round(number(body.count, 1, 8, 4));
-  else value.dayIndex = Math.round(number(body.dayIndex, 0, 6, 0));
+  else {
+    value.dayIndex = Math.round(number(body.dayIndex, 0, 6, 0));
+    if (partial) {
+      value.partial = true;
+      value.existing = (Array.isArray(body.existing) ? body.existing : [])
+        .filter((e) => e && typeof e === 'object' && typeof e.name === 'string' && SLOTS.includes(e.slot) && e.name.trim())
+        .slice(0, 6)
+        .map((e) => ({ slot: e.slot, name: e.name.trim().slice(0, 80), calories: Math.round(number(e.calories, 0, 5000, 0)) }));
+    }
+  }
   return { ok: true, value };
 }
 
 const SYSTEM = `You are the meal-planning engine inside a calorie tracking app. You plan real, cookable meals for ONE person.
 
 Reply with ONLY a JSON object, with no markdown and no commentary, in exactly this shape:
-{"meals":[{"slot":"breakfast","name":"Meal name","notes":"A short method, at most 3 sentences.","ingredients":[{"name":"Rolled oats","amount":"60 g","calories":228,"protein":8,"carbs":40,"fat":4}]}]}
+{"meals":[{"slot":"breakfast","name":"Meal name","steps":["First step.","Second step."],"ingredients":[{"name":"Rolled oats","amount":"60 g","calories":228,"protein":8,"carbs":40,"fat":4}]}]}
 
 Rules:
 - "slot" must be one of the requested meal times.
 - Every meal is ONE serving. Each ingredient's calories (kcal) and protein, carbs and fat (grams) are for the amount listed. A meal's totals are the sum of its ingredients, so keep the numbers realistic and consistent.
+- "steps" are 4 to 8 clear instructions a beginner could follow, one or two short sentences each, with times, heat levels and quantities where they matter. Do not number them.
 - Use plain, specific ingredient names that make allergens obvious, for example "cheddar cheese" rather than "topping". No brand names.
 - NEVER include anything listed under "avoid" (these are allergies) or anything that breaks "diets". Halal and kosher cannot be verified, so follow them as carefully as you can.
 - Do not use foods listed under "dislikes". Prefer foods under "likes" when they fit.
@@ -75,7 +88,7 @@ export const MEALS_SCHEMA = {
         properties: {
           slot: { type: 'string', enum: SLOTS },
           name: { type: 'string' },
-          notes: { type: 'string' },
+          steps: { type: 'array', items: { type: 'string' } },
           ingredients: {
             type: 'array',
             items: {
@@ -93,7 +106,7 @@ export const MEALS_SCHEMA = {
             },
           },
         },
-        required: ['slot', 'name', 'notes', 'ingredients'],
+        required: ['slot', 'name', 'steps', 'ingredients'],
         additionalProperties: false,
       },
     },
@@ -116,8 +129,13 @@ export function buildRequest({ model, system, user, structured = true }) {
 export function buildPrompt(request) {
   const { mode, slots, targets, budget } = request;
   const goal = `${targets.calories} kcal, ${targets.protein} g protein, ${targets.carbs} g carbs and ${targets.fat} g fat`;
+  const already = (request.existing ?? []).map((e) => `${e.slot}: ${e.name} (${e.calories} kcal)`).join('; ');
   const task =
-    mode === 'day'
+    mode === 'day' && request.partial
+      ? `Plan part of one day (day ${request.dayIndex + 1} of the plan). The day already has these meals: ${already || 'none'}. ` +
+        `Write exactly one new meal for each of these remaining meal times: ${slots.join(', ')}. ` +
+        `Together the new meals should come to about ${targets.calories} kcal (within 8%), near ${goal}, and should go well with what is already planned.`
+      : mode === 'day'
       ? `Plan one day (day ${request.dayIndex + 1} of the plan) with exactly one meal for each of these meal times: ${slots.join(', ')}. ` +
         `Together the meals should come to about ${targets.calories} kcal (within 5%), near ${goal}. Share the calories sensibly across the meal times.`
       : `Write ${request.count} different meals, spread across these meal times: ${slots.join(', ')}. ` +

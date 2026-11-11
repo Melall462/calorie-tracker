@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { MEALS, toNumber } from '../lib/meals.js';
 import { formatDay, shiftDay, todayKey } from '../lib/dates.js';
-import { BUDGETS, MAX_DAYS, MAX_MEALS, buildContext, dayCalories, planDays, planMeals, recipeCalories } from '../lib/planAi.js';
+import { BUDGETS, MAX_DAYS, MAX_MEALS, REUSE_LEVELS, buildContext, dayCalories, planDays, planMeals, recipeCalories, reusableRecipes } from '../lib/planAi.js';
+import { MAX_MEALS as BOOK_LIMIT } from '../lib/recipes.js';
 import { ALLERGENS, DIETS } from '../lib/preferences.js';
 import { usePreferences } from '../lib/PreferencesContext.js';
 import { useCloud } from '../lib/CloudContext.js';
@@ -23,6 +24,7 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
   const [slots, setSlots] = useState(['breakfast', 'lunch', 'dinner']);
   const [cuisines, setCuisines] = useState([]);
   const [budget, setBudget] = useState('any');
+  const [reuseId, setReuseId] = useState('sometimes'); // how often to borrow meals from the recipe book
   const [phase, setPhase] = useState('form'); // form, running or result
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState(null);
@@ -31,6 +33,8 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
   const dayCount = Math.min(MAX_DAYS, Math.max(1, Math.round(toNumber(days)) || 1));
   const mealCount = Math.min(MAX_MEALS, Math.max(1, Math.round(toNumber(count)) || 1));
   const startOk = start >= todayKey();
+  const reuse = REUSE_LEVELS.find((l) => l.id === reuseId) ?? REUSE_LEVELS[0];
+  const usableCount = reusableRecipes(meals, prefs).length;
   const valid = slots.length > 0 && (mode === 'meals' || startOk);
 
   function switchMode(next) {
@@ -46,7 +50,7 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
     if (mode === 'days') {
       const dates = Array.from({ length: dayCount }, (_, i) => shiftDay(start, i));
       setProgress({ done: 0, total: dates.length });
-      const out = await planDays({ planner: cloud.planMeals, dates, slots, context, prefs, onProgress: setProgress, isCancelled: () => stopRef.current });
+      const out = await planDays({ planner: cloud.planMeals, dates, slots, context, prefs, onProgress: setProgress, isCancelled: () => stopRef.current, book: meals, reuse });
       setResult({ ...out, mode: 'days', dates });
     } else {
       setProgress({ done: 0, total: 1 });
@@ -103,11 +107,13 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
 
   /* ---------- Result ---------- */
   if (phase === 'result' && result) {
-    const { recipes, items, removed, dropped, error, daysDone, dates } = result;
-    const totals = dayCalories(recipes, items);
+    const { recipes, items, removed, dropped, error, daysDone, dates, reused = 0 } = result;
+    const totals = dayCalories([...recipes, ...meals], items);
     const offTarget = (dates ?? []).filter((d) => totals[d] !== undefined && Math.abs(totals[d] - goals.calories) > goals.calories * 0.12);
-    const recipeById = new Map(recipes.map((r) => [r.id, r]));
-    const nothing = recipes.length === 0;
+    const recipeById = new Map([...meals, ...recipes].map((r) => [r.id, r]));
+    const bookIds = new Set(meals.map((m) => m.id));
+    const noRoom = recipes.length > BOOK_LIMIT - meals.length; // the recipe book has a size limit
+    const nothing = items.length === 0 && recipes.length === 0;
     const saveLabel = mode === 'days' ? (error ? `Keep the ${daysDone} ${daysDone === 1 ? 'day' : 'days'} that worked` : 'Save to my planner') : 'Save to my recipe book';
 
     return (
@@ -121,8 +127,14 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
         {!nothing && (
           <p>
             {mode === 'days'
-              ? `${items.length} meals across ${daysDone} ${daysDone === 1 ? 'day' : 'days'}, using ${recipes.length} new ${recipes.length === 1 ? 'recipe' : 'recipes'}.`
+              ? `${items.length} meals across ${daysDone} ${daysDone === 1 ? 'day' : 'days'}: ${recipes.length} new ${recipes.length === 1 ? 'recipe' : 'recipes'}${reused > 0 ? ` and ${reused} from your recipe book` : ''}.`
               : `${recipes.length} new ${recipes.length === 1 ? 'recipe' : 'recipes'} for your recipe book.`}
+          </p>
+        )}
+        {!nothing && recipes.length > 0 && <p className="muted small">New recipes are saved to your recipe book too, with their ingredients and method. Tap a meal in the planner to see them.</p>}
+        {noRoom && (
+          <p className="error" role="alert">
+            Your recipe book holds up to {BOOK_LIMIT} recipes and has {meals.length}. Delete some recipes you don&apos;t use, or plan fewer days, then try again.
           </p>
         )}
         {removed.length > 0 && (
@@ -158,6 +170,7 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
                       {items.filter((i) => i.date === d).map((i) => (
                         <span className="muted small" key={i.id}>
                           {labelOf(MEALS, i.slot)}: {recipeById.get(i.mealId)?.name}
+                          {bookIds.has(i.mealId) ? ' (from your recipe book)' : ''}
                         </span>
                       ))}
                     </div>
@@ -178,7 +191,7 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
         <p className="muted small">AI can get nutrition and ingredients wrong. Check each recipe, especially if you have an allergy, before you cook it.</p>
 
         {!nothing && (
-          <button className="btn" onClick={() => onDone({ recipes, items, start: dates?.[0] })}>
+          <button className="btn" onClick={() => onDone({ recipes, items, start: dates?.[0] })} disabled={noRoom}>
             {saveLabel}
           </button>
         )}
@@ -252,6 +265,26 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
 
         <TagInput label="Cuisines or themes (optional)" placeholder="Mediterranean, quick weeknight" items={cuisines} onChange={setCuisines} hint="Press Enter or Add after each." />
 
+        {mode === 'days' && (
+          <label className="field">
+            <span>Use meals from my recipe book</span>
+            <select value={reuseId} onChange={(e) => setReuseId(e.target.value)} disabled={usableCount === 0}>
+              {REUSE_LEVELS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+            <small className="hint">
+              {meals.length === 0
+                ? 'Your recipe book is empty, so every meal will be new.'
+                : usableCount === 0
+                  ? 'None of your saved recipes suit your diet and allergies, so every meal will be new.'
+                  : `Mixes in recipes you already have, so you cook some favourites again. ${usableCount} of your ${meals.length} ${meals.length === 1 ? 'recipe is' : 'recipes are'} suitable.`}
+            </small>
+          </label>
+        )}
+
         <label className="field">
           <span>Budget</span>
           <select value={budget} onChange={(e) => setBudget(e.target.value)}>
@@ -284,7 +317,7 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
         </section>
 
         <p className="muted small">
-          This uses {requests} of your {DAILY_LIMIT} AI requests for today.
+          This uses {mode === 'days' && reuse.chance > 0 && usableCount > 0 ? 'up to ' : ''}{requests} of your {DAILY_LIMIT} AI requests for today.
         </p>
         <button className="btn" onClick={run} disabled={!valid}>
           Generate

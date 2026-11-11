@@ -34,3 +34,7 @@ select 'only the server can count AI usage',
        has_function_privilege('service_role', 'public.increment_ai_usage(uuid)', 'execute')
    and not has_function_privilege('anon', 'public.increment_ai_usage(uuid)', 'execute')
    and not has_function_privilege('authenticated', 'public.increment_ai_usage(uuid)', 'execute');
+
+-- After running the size migration (20261114000000_sync_unit_size.sql), run this third check. It should say ok = true.
+select 'synced records can be up to 2 MB (the recipe book needs the room)' as check_name,
+       exists (select 1 from pg_constraint where conrelid = 'public.sync_units'::regclass and conname = 'sync_units_value_check' and pg_get_constraintdef(oid) like '%2097152%') as ok;

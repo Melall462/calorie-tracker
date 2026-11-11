@@ -8,6 +8,7 @@ import PlanGenerator from './PlanGenerator.jsx';
 // Your recipe book and your meal planner, with AI planning behind a button.
 export default function MealsPage({ dayLabel, meals, goals, plan, planActions, onAdd, onSaveMeal, onDeleteMeal, onGenerated }) {
   const [view, setView] = useState('recipes'); // recipes, plan or generate
+  const [openRecipe, setOpenRecipe] = useState(null); // a recipe to show already open (when jumping from the planner)
   const [focus, setFocus] = useState(null); // a day to show when the planner opens (after generating)
   const [slot, setSlot] = useState(defaultMeal()); // breakfast, lunch, dinner or snack
   const [building, setBuilding] = useState(undefined); // undefined: not building, null: a new meal, object: editing that meal
@@ -31,10 +32,22 @@ export default function MealsPage({ dayLabel, meals, goals, plan, planActions, o
     <>
       <h1>Meals</h1>
       <div className="segmented" role="group" aria-label="Meals sections">
-        <button onClick={() => setView('recipes')} aria-pressed={view === 'recipes'}>
+        <button
+          onClick={() => {
+            setOpenRecipe(null);
+            setView('recipes');
+          }}
+          aria-pressed={view === 'recipes'}
+        >
           Recipes
         </button>
-        <button onClick={() => setView('plan')} aria-pressed={view !== 'recipes'}>
+        <button
+          onClick={() => {
+            setOpenRecipe(null);
+            setView('plan');
+          }}
+          aria-pressed={view !== 'recipes'}
+        >
           Planner
         </button>
       </div>
@@ -53,6 +66,8 @@ export default function MealsPage({ dayLabel, meals, goals, plan, planActions, o
             </select>
           </label>
           <MealsPane
+            key={openRecipe ?? 'list'}
+            initialOpenId={openRecipe}
             meals={meals}
             slotLabel={slotLabel}
             onNew={() => setBuilding(null)}
@@ -78,6 +93,10 @@ export default function MealsPage({ dayLabel, meals, goals, plan, planActions, o
             onUndo={planActions.undo}
             onClearWeek={planActions.clear}
             onGenerate={() => setView('generate')}
+            onOpenRecipe={(id) => {
+              setOpenRecipe(id);
+              setView('recipes');
+            }}
           />
         </div>
       )}

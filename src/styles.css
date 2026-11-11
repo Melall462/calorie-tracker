@@ -433,3 +433,22 @@ h1:focus { outline: none; }
 .picker { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
 .tag.ai { background: rgba(59, 130, 168, 0.18); color: #1f4f6b; }
 .preview .entry-main span { overflow-wrap: anywhere; }
+
+/* Planner: tap a meal to see what you need and how to make it */
+.name-btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.name-btn .entry-name { text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.name-btn:hover .entry-name, .name-btn:focus-visible .entry-name { text-decoration-color: currentColor; }
+.chev { color: var(--muted); font-size: 0.8rem; }
+.plan-row { flex-wrap: wrap; }
+.plan-details { flex-basis: 100%; min-width: 0; }
+.meal-details { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 4px; }
+.meal-details h4 { margin: 10px 0 0; font-size: 0.95rem; font-weight: 800; }
+.meal-details p { margin: 0; }
+.ingredient-list { list-style: none; margin: 0; padding: 0; }
+.ingredient-list li { display: flex; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+.ingredient-list li:last-child { border-bottom: 0; }
+.ingredient-list li span:last-child { flex-shrink: 0; text-align: right; }
+.method-steps { margin: 0; padding-left: 22px; }
+.method-steps li { margin: 8px 0; padding-left: 4px; }
+.book-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.tag.book { background: rgba(62, 142, 94, 0.18); color: #1f5a3a; }

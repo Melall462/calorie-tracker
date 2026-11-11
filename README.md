@@ -22,7 +22,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
 - **First-run setup:** new visitors get a welcome screen and five short steps (About you, Activity, Your goal, Food preferences, Your plan). It uses the calorie calculator, so the same safety rules apply. Finishing saves your targets, your body stats, your food preferences and today's weight as the first weigh-in. People can skip it, and anyone who already has saved data goes straight to the app. Account has a **Run setup again** link.
-- **Meal planner (Meals > Planner):** plan meals onto days and meal times from your recipe book, week by week, with each day's planned calories and macros against your targets. **Log** puts a planned meal in that day's food diary in one tap (and **Undo** takes it back). With an account, **Plan with AI** can write whole days or a whole week of meals, or a few separate meals, around your targets, diet, allergies and likes, plus cuisines and a budget. See *AI meal planner* below.
+- **Meal planner (Meals > Planner):** plan meals onto days and meal times from your recipe book, week by week, with each day's planned calories and macros against your targets. **Log** puts a planned meal in that day's food diary in one tap (and **Undo** takes it back). With an account, **Plan with AI** can write whole days or a whole week of meals, or a few separate meals, around your targets, diet, allergies and likes, plus cuisines and a budget. **Tap a meal** in the planner to see what you need (amounts follow the servings you chose) and how to make it, with a button to open it in the recipe book. See *AI meal planner* below.
 - **Accounts and sync (optional):** with Supabase configured, people can create an account and their data syncs between devices. Without it, everything stays on the device exactly as before. See *Cloud sync* below.
 - **Navigation:** four tabs, Today, Add food, Meals and Account.
 - **Meals tab:** your recipe book as a page of its own. Build meals from ingredients, edit or delete them, and log one to a meal time in one tap (the same recipe book is also reachable from Add food > Meals).
@@ -167,7 +167,7 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 
 ### How it works
 
-- **Units.** Data is cut into pieces: one per **day** (its food entries, water and weigh-in), one for **settings** (targets, body stats, food preferences, setup done) and one for the **recipe book**. Each piece is one row in `sync_units`, with a version number. Only pieces that changed are sent.
+- **Units.** Data is cut into pieces: one per **day** (its food entries, water and weigh-in), one for **settings** (targets, body stats, food preferences, setup done) and one for the **recipe book**. Each piece is one row in `sync_units`, with a version number. Only pieces that changed are sent. The recipe book is one piece, so it is capped at 300 recipes (a typical recipe with instructions is about 2 KB) and the database limit on a piece is 2 MB (`supabase/migrations/20261114000000_sync_unit_size.sql`; the first migration allowed only 256 KB, which instructions would reach after about 120 recipes).
 - **Three-way merge.** The app remembers what each piece looked like at the last sync. At the next sync it compares current data and the cloud's data against that, so it can tell "deleted here" from "added there". Things added on two devices are both kept, a deletion on one device reaches the other and stays deleted, different edits are combined, and food preferences are merged as sets.
 - **Conflicts.** If both devices changed the very same thing, the edit you just made wins. The one exception is a device's first-ever sync (it holds data from before it joined the account), where the account's data wins a clash, but nothing logged on either side is lost. Water added on two devices keeps the larger total. Setup, once done anywhere, counts as done everywhere.
 - **Safe saving.** A change is saved only if the stored version is still the one the device last saw. If another device saved first, the app fetches that version, merges and tries again. Food logged while a sync is running is kept.
@@ -190,17 +190,18 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 
 ### How it was tested
 
-`npm test` runs 57 checks of the sync engine against an in-memory stand-in for the cloud: two devices, concurrent edits, deletions, a device saving at the worst moment, an unreachable server, hostile data, and more. The screens were also tested in a real browser against the same stand-in. **Not yet tested against a real Supabase project:** the SQL itself and `src/lib/backend.js` (the thin layer that calls the Supabase library). Run `supabase/verify.sql`, then use the checklist above with two browsers and two different accounts.
+`npm test` runs 64 checks of the sync engine against an in-memory stand-in for the cloud: two devices, concurrent edits, deletions, a device saving at the worst moment, an unreachable server, hostile data, and more. The screens were also tested in a real browser against the same stand-in. Against the real Supabase project: the SQL was verified with `supabase/verify.sql`, row-level security was checked with two different users (each sees only their own rows), and sign-up and sync were confirmed by hand. Still worth doing: the checklist above with two browsers and two accounts, and the barcode camera on a real phone.
 
 ## AI meal planner
 
-**Meals > Planner > Plan with AI.** Pick **Whole days** (1 to 7 days, a start date, and which meal times) or **Some meals** (1 to 8, saved to the recipe book). Optionally add cuisines or themes and a budget. The AI is told your Account targets, diet, allergies and the foods you love and avoid. You review the result before anything is saved, then **Save to my planner**.
+**Meals > Planner > Plan with AI.** Pick **Whole days** (1 to 7 days, a start date, and which meal times) or **Some meals** (1 to 8, saved to the recipe book). Optionally add cuisines or themes and a budget, and choose how often to **use meals from your recipe book** (Never, Sometimes or Often). The AI is told your Account targets, diet, allergies and the foods you love and avoid. You review the result before anything is saved, then **Save to my planner**. New recipes are saved to the recipe book as well, each with its ingredients and a numbered method.
 
 ### How it works
 
 - The app calls a Supabase **Edge Function** (`supabase/functions/plan-meals`), which holds the Anthropic API key and calls the model. The key never reaches the browser.
 - A week is **one request per day**. That keeps each answer small, lets the AI vary meals day to day (it is told which meals already exist), and means a failure part-way keeps the days that worked. **Stop** ends a run early and keeps what is done.
-- Each meal comes back as one serving with its ingredients. The app adds the ingredients up itself, so a meal's calories are always the sum of its ingredients.
+- Each meal comes back as one serving with its ingredients and 4 to 8 steps. The app adds the ingredients up itself, so a meal's calories are always the sum of its ingredients. The steps are stored as numbered lines in the recipe's notes, so they sync and edit like any method.
+- **Borrowing from the recipe book.** With Sometimes (30% chance per meal time, at most one a day) or Often (60%, at most two), a day swaps some meals for recipes you already have. A recipe is only used if it breaks no diet or allergy, is not something you avoid, fits the meal time by calories (a snack is not offered as dinner), and was not used in the last two days. The AI is then asked only for the remaining meal times, told what is already planned, and given the calories and macros that are left. A day made only of your own recipes makes no AI request, so borrowing also saves requests.
 
 ### Safety
 
@@ -214,9 +215,10 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 
 1. **Get an Anthropic API key.** At console.anthropic.com create an account, add a small amount of credit, **set a monthly spend limit** (do this first), and create an API key. This is separate from a Claude chat subscription. Cost is per request, typically cents per plan: check the pricing page for current prices.
 2. **Run the database migration.** Paste `supabase/migrations/20261113000000_ai_usage.sql` into the Supabase SQL Editor and run it, then run the second query in `supabase/verify.sql`. Every row should say `ok = true`.
-3. **Add the key as a secret.** Supabase dashboard > Edge Functions > Secrets: add `ANTHROPIC_API_KEY`. (Optional: `ANTHROPIC_MODEL` to change the model.)
-4. **Deploy the function.** With the Supabase CLI: `supabase functions deploy plan-meals`. Or in the dashboard, create a function called `plan-meals` and paste in `index.ts` and `plan.js`.
-5. Open Meals > Planner > Plan with AI while signed in. Until the key is set, the app says "AI planning is not set up yet" and everything else keeps working.
+3. **Raise the size limit for the recipe book.** Paste `supabase/migrations/20261114000000_sync_unit_size.sql` into the SQL Editor and run it, then run the third query in `supabase/verify.sql` (it should say `ok = true`). Without it, syncing starts failing once the recipe book grows past about 120 recipes with instructions.
+4. **Add the key as a secret.** Supabase dashboard > Edge Functions > Secrets: add `ANTHROPIC_API_KEY`. (Optional: `ANTHROPIC_MODEL` to change the model.)
+5. **Deploy the function.** With the Supabase CLI: `supabase functions deploy plan-meals`. Or in the dashboard, create a function called `plan-meals` and paste in `index.ts` and `plan.js`.
+6. Open Meals > Planner > Plan with AI while signed in. Until the key is set, the app says "AI planning is not set up yet" and everything else keeps working.
 
 ### If AI planning shows an error
 
@@ -227,15 +229,19 @@ The function writes what actually went wrong to its logs: Supabase dashboard > E
 - "The AI service is not available right now": Anthropic returned an error (the logs include its message, for example a missing key, no credit, or a spend limit reached).
 - "You have used all 40 AI requests for today": the per-person daily limit.
 
-Notes for developers: the newest Claude models (Sonnet 5.5, Haiku 5.5) **think before they answer, and that thinking counts towards `max_tokens`**, which is why the request allows 12,000 tokens and sets the thinking effort to medium. They also **reject prefilled replies and forced tool calls**, so the function asks for the reply in a fixed shape with structured outputs (`output_config.format`), falls back to plain text once if the model refuses that, and, if a reply is ever cut off, keeps every meal that finished instead of losing the plan. Thinking adds output tokens, so a request costs somewhat more than the plain estimate: still a few cents at most on Sonnet 5.5 and a fraction of a cent on Haiku 5.5 (set `ANTHROPIC_MODEL=claude-haiku-5-5` to use the cheaper model).
+Notes for developers: the newest Claude models (Sonnet 5.5, Haiku 5.5) **think before they answer, and that thinking counts towards `max_tokens`**, which is why the request allows 12,000 tokens and sets the thinking effort to medium. They also **reject prefilled replies and forced tool calls**, so the function asks for the reply in a fixed shape with structured outputs (`output_config.format`), falls back to plain text once if the model refuses that, and, if a reply is ever cut off, keeps every meal that finished instead of losing the plan. The function logs the real token usage of every successful request (`AI usage` in the function logs), so actual costs can be checked. Thinking adds output tokens, so a request costs somewhat more than the plain estimate: still a few cents at most on Sonnet 5.5 and a fraction of a cent on Haiku 5.5 (set `ANTHROPIC_MODEL=claude-haiku-5-5` to use the cheaper model).
 
 ### Known limits
 
 - One person per plan (every meal is one serving; you can change servings in the planner).
 - AI nutrition numbers are estimates and can be wrong. Everything is editable in the recipe book.
+- The recipe book holds up to 300 recipes. The generator warns before a plan would not fit, and you delete recipes you no longer use to make room.
+- Recipes are not tagged with a meal time, so borrowing guesses by calories. A 500 kcal soup could land at breakfast.
 - No shopping list yet: that is the natural next step, built from the planned meals' ingredients.
 - Planned meals can be logged on the day or after it, not before.
 
 ### How it was tested
 
-`npm test` includes checks of the safety screen (28), the planner data (14), the AI orchestration (30) and the Edge Function's request checking, prompt, request shape and reply reader (38): hostile and malformed replies, allergens leaking through, failures part-way, cancelling, and prompt injection through cuisines or likes. The screens were tested in a real browser against a fake AI service, including generating a week, separate meals, allergen removal, a limit reached, the AI not being set up, Stop, and the plan syncing between two devices. **Not yet tested:** the real Edge Function (Deno) calling the real Anthropic API. Once it is deployed, generate a one-day plan first and check the result.
+`npm test` runs six suites (226 checks): the sync engine (64), the safety screen (28), the planner data (15), the AI orchestration including instructions and borrowing from the recipe book (59), the recipe helpers (13: reading steps, scaling amounts, the recipe book size) and the Edge Function's request checking, prompt, partial days, request shape and reply reader (47). They cover hostile and malformed replies, allergens leaking through, failures part-way, cancelling, replies that are cut off, and prompt injection through cuisines or likes. The screens were tested in a real browser (350 checks) against a fake AI service, including tapping a meal for its details, scaling amounts, jumping to the recipe book, borrowing meals, a nearly full recipe book, generating a week, separate meals, allergen removal, a limit reached, the AI not being set up, Stop, and the plan syncing between two devices.
+
+Against the real services: the Edge Function is deployed on the Nutrily project and has generated plans with the real Anthropic API. The first real run found a bug the fake service could not (the model's thinking used up the token limit), which is now fixed and covered by tests. The newest changes (steps and borrowing) have passed every test but still need a first real run: generate a one-day plan and check the steps, then a week with borrowing on.
