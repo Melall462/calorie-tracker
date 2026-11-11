@@ -413,3 +413,23 @@ h1:focus { outline: none; }
 .cloud-actions .btn { width: auto; min-height: 44px; padding-inline: 1.1rem; }
 .cloud-confirm { margin-top: 4px; }
 .welcome-account { margin: 0; text-align: center; font-size: 0.9rem; color: var(--on-forest-muted); }
+
+/* Meal planner */
+.week-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.week-label { font-weight: 600; }
+.week-nav .pill-btn { min-width: 44px; font-size: 1.1rem; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week .day { width: auto; height: 72px; border-radius: 16px; }
+.plan-day { margin-top: 8px; }
+.plan-day h2 { margin: 0; }
+.plan-day h3 { font-size: 1rem; margin: 0; }
+.plan-day .bar { margin-top: 8px; }
+.slot { margin-top: 20px; }
+.slot-empty { margin: 8px 0 0; }
+.plan-row.done .entry-name { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+.servings-pick select { min-height: 36px; width: auto; padding: 0.2rem 0.5rem; font-size: 0.85rem; margin-top: 4px; }
+.link-btn.strong { color: var(--forest); font-weight: 800; }
+.link-btn:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: none; }
+.picker { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.tag.ai { background: rgba(59, 130, 168, 0.18); color: #1f4f6b; }
+.preview .entry-main span { overflow-wrap: anywhere; }

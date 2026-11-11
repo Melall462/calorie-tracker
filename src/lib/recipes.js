@@ -1,7 +1,7 @@
 // Saved meals (the recipe book). Pure functions, no React.
 //
 // A meal looks like:
-//   { id, name, servings, notes, ingredients: [{ id, name, serving, calories, protein, carbs, fat }] }
+//   { id, name, servings, notes, ai?, ingredients: [{ id, name, serving, calories, protein, carbs, fat }] }
 // Each ingredient's numbers are for the whole amount used in the recipe, and "servings" is how many portions the
 // recipe makes. Nutrition per serving is worked out from the totals, so nothing is stored twice.
 import { round1, sumEntries } from './nutrition.js';
@@ -50,7 +50,9 @@ export function cleanMeals(saved) {
           .filter((i) => i.name)
       : [];
     if (!name || !(servings > 0) || ingredients.length === 0) continue;
-    out.push({ id: m.id, name, servings: Math.min(servings, MAX_SERVINGS), ingredients, notes: String(m.notes ?? '').slice(0, 2000) });
+    const meal = { id: m.id, name, servings: Math.min(servings, MAX_SERVINGS), ingredients, notes: String(m.notes ?? '').slice(0, 2000) };
+    if (m.ai === true) meal.ai = true; // written by the AI planner, so it gets a reminder to check the ingredients
+    out.push(meal);
   }
   return out;
 }

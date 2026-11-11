@@ -22,6 +22,7 @@ Then open the address Vite prints (usually http://localhost:5173). Needs Node 18
 - **Add food:** pick from a built-in list of about 40 foods (with macros) and a servings amount, or enter a custom food. Leave custom calories blank and they are worked out from the macros.
 - **Edit entry:** change an entry's name, serving note, meal, date (to move it to another day), calories and macros. Clear the calories to work them out from the macros.
 - **First-run setup:** new visitors get a welcome screen and five short steps (About you, Activity, Your goal, Food preferences, Your plan). It uses the calorie calculator, so the same safety rules apply. Finishing saves your targets, your body stats, your food preferences and today's weight as the first weigh-in. People can skip it, and anyone who already has saved data goes straight to the app. Account has a **Run setup again** link.
+- **Meal planner (Meals > Planner):** plan meals onto days and meal times from your recipe book, week by week, with each day's planned calories and macros against your targets. **Log** puts a planned meal in that day's food diary in one tap (and **Undo** takes it back). With an account, **Plan with AI** can write whole days or a whole week of meals, or a few separate meals, around your targets, diet, allergies and likes, plus cuisines and a budget. See *AI meal planner* below.
 - **Accounts and sync (optional):** with Supabase configured, people can create an account and their data syncs between devices. Without it, everything stays on the device exactly as before. See *Cloud sync* below.
 - **Navigation:** four tabs, Today, Add food, Meals and Account.
 - **Meals tab:** your recipe book as a page of its own. Build meals from ingredients, edit or delete them, and log one to a meal time in one tap (the same recipe book is also reachable from Add food > Meals).
@@ -51,6 +52,9 @@ src/
     Weight.jsx             log weight, trend chart, history (shown inside Account)
     Onboarding.jsx         the first-run setup flow
     FoodPreferences.jsx    diet, allergies, foods you love and avoid (setup and Account > Food)
+    Planner.jsx            the week planner: days, meal times, logging
+    PlanGenerator.jsx      the Plan with AI screen
+    TagInput.jsx           type-and-Enter tags (food preferences, cuisines)
     CloudCard.jsx          the account and sync panel on the Account page
     AuthForm.jsx           sign in or create an account
     Account.jsx            the Account page: Targets, Calculator and Weight sections
@@ -60,6 +64,9 @@ src/
     useLocalStorage.js     saves state to the browser
     barcode.js             barcode check digits, Open Food Facts lookup and parsing
     scanner.js             camera barcode reading and camera error messages
+    plan.js                planner data: weeks, plan items, day totals
+    planAi.js              runs AI planning day by day and turns replies into safe recipes
+    mealSafety.js          allergy and diet screen for meals
     backend.js             the only file that talks to Supabase (auth and the sync table)
     sync.js                the sync engine: compare, push, pull, retry on conflict
     merge.js               three-way merge of two copies of the data
@@ -80,7 +87,7 @@ docs/MVP.md                the plan for this version
 
 ## Data
 
-Stored in the browser under nine keys:
+Stored in the browser under ten keys:
 
 - `nutrily:goals`: `{ calories, protein, carbs, fat, water }` (water in ml)
 - `nutrily:entries`: a list of `{ id, date, name, serving, calories, protein, carbs, fat, meal, source }`
@@ -90,6 +97,7 @@ Stored in the browser under nine keys:
 - `nutrily:onboarded`: `true` once setup is finished or skipped. If it is missing but other Nutrily data exists, the app treats the person as an existing user.
 - `nutrily:preferences`: `{ diets, avoid, likes, dislikes }`. Diets and allergies are lists of fixed ids; likes and dislikes are short free-text terms.
 - `nutrily:sync`: sync notes (which account this device synced as, a cursor, and the last-synced copy of each piece of data). Only exists once someone has signed in.
+- `nutrily:plan`: planned meals, `{ id, date, slot, mealId, servings, done, entryId }`. With an account these sync inside each day's record.
 - `nutrily:profile`: body stats and aim for the calculator, kept as text so it works with form inputs
 
 Version 1 stored a single number under `nutrily:goal`. It is carried over automatically, and entries saved before macros existed count as 0 g.
@@ -183,3 +191,40 @@ Nutrily is **local-first**: it always works from the data saved on the device, w
 ### How it was tested
 
 `npm test` runs 57 checks of the sync engine against an in-memory stand-in for the cloud: two devices, concurrent edits, deletions, a device saving at the worst moment, an unreachable server, hostile data, and more. The screens were also tested in a real browser against the same stand-in. **Not yet tested against a real Supabase project:** the SQL itself and `src/lib/backend.js` (the thin layer that calls the Supabase library). Run `supabase/verify.sql`, then use the checklist above with two browsers and two different accounts.
+
+## AI meal planner
+
+**Meals > Planner > Plan with AI.** Pick **Whole days** (1 to 7 days, a start date, and which meal times) or **Some meals** (1 to 8, saved to the recipe book). Optionally add cuisines or themes and a budget. The AI is told your Account targets, diet, allergies and the foods you love and avoid. You review the result before anything is saved, then **Save to my planner**.
+
+### How it works
+
+- The app calls a Supabase **Edge Function** (`supabase/functions/plan-meals`), which holds the Anthropic API key and calls the model. The key never reaches the browser.
+- A week is **one request per day**. That keeps each answer small, lets the AI vary meals day to day (it is told which meals already exist), and means a failure part-way keeps the days that worked. **Stop** ends a run early and keeps what is done.
+- Each meal comes back as one serving with its ingredients. The app adds the ingredients up itself, so a meal's calories are always the sum of its ingredients.
+
+### Safety
+
+- The AI is told your allergies and diet, but it is not trusted. **Every meal is screened in the app** against your allergies and diet before it can be saved, using word lists that understand things like "coconut milk is not dairy" and "peanut butter is still a peanut". A meal that breaks a rule is **removed**, and the review lists which one and why. Foods you only dislike are not blocked.
+- Meals with unbelievable numbers (more than 3,500 kcal in a serving, or calories that do not match the protein, carbs and fat) are skipped rather than saved.
+- AI-written recipes are labelled **AI-written**, with a reminder to check the ingredients. The same screen tags any recipe in the book that conflicts with your preferences, including ones you wrote yourself.
+- This is a keyword screen, not a guarantee. It cannot see inside "sauce", and the lists are not complete. Halal and kosher are only partly screened (pork, alcohol, shellfish, meat with dairy). The app always tells people to check ingredients themselves, especially with an allergy.
+- Only signed-in accounts can use it, each is limited to **40 AI requests a day** (a week uses 7), and the request is validated and trimmed on the server before it reaches the model.
+
+### Set it up
+
+1. **Get an Anthropic API key.** At console.anthropic.com create an account, add a small amount of credit, **set a monthly spend limit** (do this first), and create an API key. This is separate from a Claude chat subscription. Cost is per request, typically cents per plan: check the pricing page for current prices.
+2. **Run the database migration.** Paste `supabase/migrations/20261113000000_ai_usage.sql` into the Supabase SQL Editor and run it, then run the second query in `supabase/verify.sql`. Every row should say `ok = true`.
+3. **Add the key as a secret.** Supabase dashboard > Edge Functions > Secrets: add `ANTHROPIC_API_KEY`. (Optional: `ANTHROPIC_MODEL` to change the model.)
+4. **Deploy the function.** With the Supabase CLI: `supabase functions deploy plan-meals`. Or in the dashboard, create a function called `plan-meals` and paste in `index.ts` and `plan.js`.
+5. Open Meals > Planner > Plan with AI while signed in. Until the key is set, the app says "AI planning is not set up yet" and everything else keeps working.
+
+### Known limits
+
+- One person per plan (every meal is one serving; you can change servings in the planner).
+- AI nutrition numbers are estimates and can be wrong. Everything is editable in the recipe book.
+- No shopping list yet: that is the natural next step, built from the planned meals' ingredients.
+- Planned meals can be logged on the day or after it, not before.
+
+### How it was tested
+
+`npm test` includes checks of the safety screen (28), the planner data (14), the AI orchestration (30) and the Edge Function's request checking and prompt (23): hostile and malformed replies, allergens leaking through, failures part-way, cancelling, and prompt injection through cuisines or likes. The screens were tested in a real browser against a fake AI service, including generating a week, separate meals, allergen removal, a limit reached, the AI not being set up, Stop, and the plan syncing between two devices. **Not yet tested:** the real Edge Function (Deno) calling the real Anthropic API. Once it is deployed, generate a one-day plan first and check the result.

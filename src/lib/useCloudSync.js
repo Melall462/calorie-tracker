@@ -113,6 +113,8 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
     };
   }, [userId, syncNow]);
 
+  // Ask the AI planner for meals. Needs a signed-in account.
+  const planMeals = useCallback((payload) => latest.current.backend.invokePlanner(payload), []);
   const signIn = useCallback((email, password) => latest.current.backend.signIn(email, password), []);
   const signUp = useCallback((email, password) => latest.current.backend.signUp(email, password), []);
   const signOut = useCallback(async () => {
@@ -139,6 +141,7 @@ export function useCloudSync({ getUnits, applyUnits, watch }) {
     lastSynced,
     error,
     syncNow,
+    planMeals,
     signIn,
     signUp,
     signOut,

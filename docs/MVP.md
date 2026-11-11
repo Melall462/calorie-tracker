@@ -315,3 +315,17 @@ Next step this enables: the AI meal maker can be told these preferences from the
 Tested: 57 sync engine checks (`npm test`) and a real-browser run of sign-up, confirmation, wrong passwords, two devices, offline edits, deletions, account switching and clearing a device, using an in-memory stand-in for the cloud. Not yet run against a real project: the SQL and `backend.js`.
 
 Next steps: password reset, delete account, a privacy policy, and a real-project test with two accounts.
+
+
+---
+
+## Update: meal planner and AI planning (version 1.2)
+
+- **Planner (Meals > Planner):** a week at a time (Monday to Sunday). Pick a day, add recipes to breakfast, lunch, dinner or snacks, change servings, remove, or clear the week. Each day shows planned calories and macros against the Account targets. **Log** adds a diary entry on that day and marks the plan item done (disabled for future days), and **Undo** removes the entry again. Deleting a recipe removes its unlogged plan items.
+- **Plan with AI:** whole days (1 to 7, one request per day) or a few separate meals (1 to 8, saved to the recipe book). Uses the Account targets, diet, allergies and likes/dislikes, plus cuisines and a budget. A review screen shows the meals and any problems before saving, offers to keep the days that worked if it fails part-way, and has a Stop button.
+- **Safety:** every AI meal is screened against allergies and diet in the app, and blocked meals are removed and explained. Unbelievable numbers are skipped. Recipes are labelled AI-written with a reminder to check ingredients, and recipes that conflict with preferences are tagged anywhere they appear.
+- **Server:** the `plan-meals` Edge Function keeps the Anthropic key secret, requires sign-in, limits each person to 40 requests a day (`ai_usage` table and function, with a migration), and validates and trims the request.
+- **Sync:** planned meals live inside each day's record, so they sync like everything else. Planning ahead creates records for future days. Older records without a plan still load.
+- **Tested:** 160 unit checks (`npm test`) and real-browser runs of manual planning and AI generation against a fake AI service, plus two-device sync. Not yet run against the real Edge Function and Anthropic API.
+
+Next step: a shopping list built from the planned meals' ingredients.

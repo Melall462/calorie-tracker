@@ -5,6 +5,7 @@ import { newId } from './lib/id.js';
 import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
 import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import { cleanMeals } from './lib/recipes.js';
+import { cleanPlan, entryForPlanItem } from './lib/plan.js';
 import { EMPTY_PREFERENCES, cleanPreferences } from './lib/preferences.js';
 import { PreferencesContext } from './lib/PreferencesContext.js';
 import { CloudContext } from './lib/CloudContext.js';
@@ -38,6 +39,7 @@ export default function App() {
   const [waterByDate, setWaterByDate] = useLocalStorage('nutrily:water', {}); // { "YYYY-MM-DD": millilitres }
   const [savedWeights, setWeights] = useLocalStorage('nutrily:weights', {}); // { "YYYY-MM-DD": kg }
   const [savedMeals, setMeals] = useLocalStorage('nutrily:meals', []); // the recipe book
+  const [savedPlan, setPlan] = useLocalStorage('nutrily:plan', []); // meals planned onto days
   const [savedPrefs, setPreferences] = useLocalStorage('nutrily:preferences', EMPTY_PREFERENCES); // diet, allergies, foods liked and avoided
   const [savedProfile, setProfile] = useLocalStorage('nutrily:profile', DEFAULT_PROFILE); // body stats, kept as text
 
@@ -46,15 +48,17 @@ export default function App() {
   const weights = cleanWeights(savedWeights);
   const profile = cleanProfile(savedProfile);
   const meals = cleanMeals(savedMeals);
+  const plan = cleanPlan(savedPlan);
   const preferences = cleanPreferences(savedPrefs);
   // Optional cloud sync (see lib/sync.js). It only does anything once Supabase is configured and someone signs in.
-  const current = () => ({ entries, water: waterByDate, weights, goals, profile, preferences, onboarded: onboarded === true, meals });
+  const current = () => ({ entries, plan, water: waterByDate, weights, goals, profile, preferences, onboarded: onboarded === true, meals });
   const cloud = useCloudSync({
     getUnits: () => collectUnits(current()),
     applyUnits: (units) => {
       const before = current();
       const after = applyUnitsToState(before, units);
       if (after.entries !== before.entries) setEntries(after.entries);
+      if (after.plan !== before.plan) setPlan(after.plan);
       if (after.water !== before.water) setWaterByDate(after.water);
       if (after.weights !== before.weights) setWeights(after.weights);
       if (after.goals !== before.goals) setGoals(after.goals);
@@ -63,7 +67,7 @@ export default function App() {
       if (after.meals !== before.meals) setMeals(after.meals);
       if (after.onboarded && !before.onboarded) setOnboarded(true);
     },
-    watch: [entries, waterByDate, savedWeights, savedGoals, savedProfile, savedPrefs, savedMeals, onboarded],
+    watch: [entries, savedPlan, waterByDate, savedWeights, savedGoals, savedProfile, savedPrefs, savedMeals, onboarded],
   });
 
   const dayEntries = entries.filter((e) => e.date === date);
@@ -109,7 +113,38 @@ export default function App() {
 
   // Saving a meal with an existing id replaces it, otherwise it is added.
   const saveMeal = (meal) => setMeals([...meals.filter((m) => m.id !== meal.id), meal]);
-  const deleteMeal = (id) => setMeals(meals.filter((m) => m.id !== id));
+  const deleteMeal = (id) => {
+    setMeals(meals.filter((m) => m.id !== id));
+    setPlan((prev) => prev.filter((p) => p.mealId !== id || p.done)); // meals planned from it go too, but not ones already logged
+  };
+
+  // The planner. Logging a planned meal adds a diary entry on its day; undoing removes that entry again.
+  const planActions = {
+    add: (date, slot, mealId) => setPlan((prev) => [...prev, { id: newId(), date, slot, mealId, servings: 1, done: false, entryId: '' }]),
+    remove: (id) => setPlan((prev) => prev.filter((p) => p.id !== id)),
+    servings: (id, servings) => setPlan((prev) => prev.map((p) => (p.id === id && !p.done ? { ...p, servings } : p))),
+    log: (id) => {
+      const item = plan.find((p) => p.id === id);
+      const meal = item && meals.find((m) => m.id === item.mealId);
+      if (!meal || item.done || item.date > todayKey()) return;
+      const entry = entryForPlanItem(item, meal, newId());
+      setEntries((prev) => [...prev, entry]);
+      setPlan((prev) => prev.map((p) => (p.id === id ? { ...p, done: true, entryId: entry.id } : p)));
+    },
+    undo: (id) => {
+      const item = plan.find((p) => p.id === id);
+      if (!item) return;
+      if (item.entryId) setEntries((prev) => prev.filter((e) => e.id !== item.entryId));
+      setPlan((prev) => prev.map((p) => (p.id === id ? { ...p, done: false, entryId: '' } : p)));
+    },
+    clear: (dates) => setPlan((prev) => prev.filter((p) => !dates.includes(p.date) || p.done)),
+  };
+
+  // Recipes (and the days they are planned on) that the AI planner wrote and the person chose to keep.
+  const addGenerated = ({ recipes, items }) => {
+    setMeals([...meals, ...recipes]);
+    setPlan((prev) => [...prev, ...items]);
+  };
 
   const saveWeight = (day, kg) => setWeights({ ...weights, [day]: kg });
   const removeWeight = (day) => {
@@ -171,7 +206,17 @@ export default function App() {
           <AddFood dayLabel={formatDay(date)} onAdd={addEntry} meals={meals} onSaveMeal={saveMeal} onDeleteMeal={deleteMeal} />
         )}
         {tab === 'meals' && (
-          <MealsPage dayLabel={formatDay(date)} meals={meals} onAdd={addEntry} onSaveMeal={saveMeal} onDeleteMeal={deleteMeal} />
+          <MealsPage
+            dayLabel={formatDay(date)}
+            meals={meals}
+            goals={goals}
+            plan={plan}
+            planActions={planActions}
+            onAdd={addEntry}
+            onSaveMeal={saveMeal}
+            onDeleteMeal={deleteMeal}
+            onGenerated={addGenerated}
+          />
         )}
         {tab === 'account' && (
           <Account

@@ -11,7 +11,7 @@ import { cleanPreferences } from '../src/lib/preferences.js';
 let fails = 0;
 const ok = (n, c, extra = '') => { console.log(c ? 'PASS' : 'FAIL', n, c ? '' : extra); if (!c) fails++; };
 
-const blank = () => ({ entries: [], water: {}, weights: {}, goals: sanitizeGoals(null), profile: cleanProfile(null), preferences: cleanPreferences(null), onboarded: false, meals: [] });
+const blank = () => ({ entries: [], plan: [], water: {}, weights: {}, goals: sanitizeGoals(null), profile: cleanProfile(null), preferences: cleanPreferences(null), onboarded: false, meals: [] });
 const D1 = '2026-11-10', D2 = '2026-11-11', D3 = '2026-11-09';
 const entry = (id, date, name = 'Food', calories = 100, meal = 'lunch') => ({ id, date, name, serving: '', calories, protein: 5, carbs: 10, fat: 2, meal, source: 'manual' });
 
@@ -50,7 +50,7 @@ const equalState = (a, b) => same(a.units(), b.units());
   ok('first sync uploads each day, the settings and the recipe book', JSON.stringify(keys) === JSON.stringify([`day:${D1}`, `day:${D2}`, 'meals', 'settings']), JSON.stringify(keys));
   ok('one request per unit, and nothing pulled', r.pushed === 4 && r.pulled === 0 && s.log.filter((l) => l.startsWith('insert:')).length === 4);
   ok('the device remembers who it synced as and a version for every unit', A.meta.userId === A.userId && Object.keys(A.meta.base).length === 4 && A.meta.base[`day:${D1}`].version === 1);
-  ok('the day unit holds entries, water and weight together', same(s.table(A.userId).get(`day:${D1}`).value, { entries: A.state.entries.filter((e) => e.date === D1), water: 750, weight: 72.4 }));
+  ok('the day unit holds entries, planned meals, water and weight together', same(s.table(A.userId).get(`day:${D1}`).value, { entries: A.state.entries.filter((e) => e.date === D1), plan: [], water: 750, weight: 72.4 }));
 
   const B = new Device(s);
   const rb = await B.sync();
@@ -125,6 +125,46 @@ const equalState = (a, b) => same(a.units(), b.units());
   A.state.entries = A.state.entries.filter((e) => e.date !== D1); A.state.water = {}; A.state.weights = {};
   await A.sync(); await B.sync();
   ok('emptying a whole day empties it on the other device too', B.state.entries.every((e) => e.date !== D1) && B.state.water[D1] === undefined && B.state.weights[D1] === undefined && equalState(A, B));
+}
+
+// ============ planned meals ============
+{
+  const planItem = (id, date, slot, mealId, extra = {}) => ({ id, date, slot, mealId, servings: 1, done: false, entryId: '', ...extra });
+  const recipe = (id, name) => ({ id, name, servings: 1, notes: '', ingredients: [{ id: `${id}-i`, name: 'Thing', serving: '', calories: 400, protein: 20, carbs: 40, fat: 10 }] });
+  const FUTURE = '2026-11-14';
+  const s = new FakeServer(); const A = new Device(s); const B = new Device(s);
+  A.state.meals = [recipe('m1', 'Oats'), recipe('m2', 'Curry')];
+  A.state.plan = [planItem('p1', FUTURE, 'breakfast', 'm1'), planItem('p2', FUTURE, 'dinner', 'm2')];
+  await A.sync(); await B.sync();
+  ok('planned meals and their recipes reach another device', B.state.plan.length === 2 && B.state.meals.length === 2 && equalState(A, B));
+  ok('a future day with only a plan still gets its own day unit', s.table(A.userId).get(`day:${FUTURE}`).value.plan.length === 2 && s.table(A.userId).get(`day:${FUTURE}`).value.entries.length === 0);
+
+  A.state.plan.push(planItem('a3', FUTURE, 'lunch', 'm1'));
+  B.state.plan.push(planItem('b4', FUTURE, 'snack', 'm2'));
+  await A.sync(); await B.sync(); await A.sync();
+  ok('meals planned on two devices at once are both kept', A.state.plan.map((p) => p.id).sort().join() === 'a3,b4,p1,p2' && equalState(A, B));
+
+  A.state.plan = A.state.plan.map((p) => (p.id === 'p1' ? { ...p, done: true, entryId: 'entry-9' } : p));
+  await A.sync(); await B.sync();
+  ok('logging a planned meal on one device marks it logged on the other', B.state.plan.find((p) => p.id === 'p1').done === true && B.state.plan.find((p) => p.id === 'p1').entryId === 'entry-9');
+
+  B.state.plan = B.state.plan.filter((p) => p.id !== 'p2');
+  await B.sync(); await A.sync();
+  ok('removing a planned meal removes it everywhere and it stays removed', !A.state.plan.some((p) => p.id === 'p2') && !B.state.plan.some((p) => p.id === 'p2'));
+  await A.sync(); await B.sync();
+
+  // a row written before plans existed (no "plan" field) still loads
+  s.table(A.userId).set('day:2026-10-01', { key: 'day:2026-10-01', version: 1, updated_at: s.stamp(), value: { entries: [entry('old1', '2026-10-01')], water: 250, weight: null } });
+  const C = new Device(s); await C.sync();
+  ok('days saved before planning existed still load, with an empty plan', C.state.entries.some((e) => e.id === 'old1') && C.state.plan.every((p) => p.date !== '2026-10-01'));
+
+  // hostile plan items from the cloud
+  s.table(A.userId).set('day:2026-10-02', { key: 'day:2026-10-02', version: 1, updated_at: s.stamp(), value: { entries: [], plan: [
+    { id: 'ok', date: '1999-01-01', slot: 'brunch', mealId: 'm1', servings: -3, done: 'yes', entryId: 7 },
+    { id: '', mealId: 'm1' }, { id: 'noMeal' }, null, 'x', { id: 'ok', mealId: 'dupe' }, { id: 'big', mealId: 'm1', servings: 9999 } ], water: 0, weight: null } });
+  const D = new Device(s); await D.sync();
+  const got = D.state.plan.filter((p) => p.date === '2026-10-02');
+  ok('malformed plan items are dropped and the rest are cleaned (date forced, slot defaulted, servings limited)', got.length === 2 && got[0].id === 'ok' && got[0].slot === 'snack' && got[0].servings === 1 && got[0].done === false && got[0].entryId === '' && got[1].servings === 50);
 }
 
 // ============ first sync on a device that already has data ============

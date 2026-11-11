@@ -81,6 +81,7 @@ export function mergeUnit(key, base, local, remote, opts = {}) {
     const bothChangedWater = !same(localWater, base.water) && !same(remoteWater, base.water) && !same(localWater, remoteWater);
     merged = {
       entries: mergeById(base.entries, local.entries, remote.entries, opts),
+      plan: mergeById(base.plan, local.plan, remote.plan, opts),
       // Water mostly goes up, so if both devices added some, keep the larger total rather than losing a drink.
       water: bothChangedWater ? Math.max(localWater, remoteWater) : scalar(base.water, localWater, remoteWater, opts),
       weight: scalar(base.weight, local.weight, remote.weight, opts),

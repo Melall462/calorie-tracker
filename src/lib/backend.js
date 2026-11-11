@@ -9,6 +9,7 @@
 //   fetchOne(key)             one row, or null
 //   insert(key, value)        { ok, version } or { conflict: true } if the row already exists
 //   update(key, value, v)     { ok, version } or { conflict: true } if the stored version is no longer `v`
+//   invokePlanner(payload)    asks the AI planner (an Edge Function) for meals; resolves to { meals }, throws a plain-language Error
 //
 // Cloud sync is optional: with no project URL and key configured, loadBackend() returns null and the app simply
 // stays on this device. The Supabase library is only downloaded when it is configured.
@@ -91,6 +92,20 @@ function wrap(client) {
         throw problem(error);
       }
       return { ok: true, version: data.version };
+    },
+    async invokePlanner(payload) {
+      const { data, error } = await client.functions.invoke('plan-meals', { body: payload });
+      if (error) {
+        let message = 'AI planning is not available right now. Try again in a moment.';
+        try {
+          const body = await error.context.json(); // the function's own explanation, such as "daily limit reached"
+          if (body?.error) message = body.error;
+        } catch {
+          /* keep the general message */
+        }
+        throw new Error(message);
+      }
+      return data;
     },
     async update(key, value, expectedVersion) {
       const { data, error } = await client

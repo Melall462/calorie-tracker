@@ -1,6 +1,6 @@
 // Sync units: the app's data, cut into pieces that can be saved to the cloud and merged independently.
 //
-//   day:YYYY-MM-DD   everything for one day: its food entries, water and weigh-in
+//   day:YYYY-MM-DD   everything for one day: its food entries, planned meals, water and weigh-in
 //   settings         targets, body stats, food preferences and whether setup is done
 //   meals            the recipe book
 //
@@ -11,6 +11,7 @@ import { DEFAULT_PROFILE, cleanProfile } from './calculator.js';
 import { EMPTY_PREFERENCES, cleanPreferences } from './preferences.js';
 import { cleanMeals } from './recipes.js';
 import { MEALS } from './meals.js';
+import { cleanPlanItem, MAX_PLAN_PER_DAY } from './plan.js';
 
 const MEAL_IDS = MEALS.map((m) => m.id);
 const SOURCES = ['search', 'manual', 'meal', 'scan', 'ai'];
@@ -31,7 +32,7 @@ export function emptyUnit(key) {
     };
   }
   if (key === 'meals') return { meals: [] };
-  return { entries: [], water: 0, weight: null };
+  return { entries: [], plan: [], water: 0, weight: null };
 }
 
 /* ---------- Comparing ---------- */
@@ -94,9 +95,19 @@ export function cleanUnit(key, value) {
       entries.push(entry);
     }
   }
+  const planSeen = new Set();
+  const plan = [];
+  for (const raw of Array.isArray(v.plan) ? v.plan.slice(0, MAX_PLAN_PER_DAY) : []) {
+    const item = cleanPlanItem(raw, date);
+    if (item && !planSeen.has(item.id)) {
+      planSeen.add(item.id);
+      plan.push(item);
+    }
+  }
   const weight = Number(v.weight);
   return {
     entries,
+    plan,
     water: Math.round(num(v.water, WATER_MAX)),
     weight: v.weight !== null && v.weight !== undefined && Number.isFinite(weight) && weight >= WEIGHT_LIMITS[0] && weight <= WEIGHT_LIMITS[1] ? round1(weight) : null,
   };
@@ -105,10 +116,11 @@ export function cleanUnit(key, value) {
 /* ---------- App state <-> units ---------- */
 
 // Cut the app's state into units. Only days with something in them are included.
-export function collectUnits({ entries, water, weights, goals, profile, preferences, onboarded, meals }) {
+export function collectUnits({ entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals }) {
   const days = {};
-  const day = (date) => (days[date] ??= { entries: [], water: 0, weight: null });
+  const day = (date) => (days[date] ??= { entries: [], plan: [], water: 0, weight: null });
   for (const e of entries) if (e && typeof e.date === 'string') day(e.date).entries.push(e);
+  for (const p of plan) if (p && typeof p.date === 'string') day(p.date).plan.push(p);
   for (const [date, ml] of Object.entries(water)) if (Number(ml) > 0) day(date).water = Number(ml);
   for (const [date, kg] of Object.entries(weights)) day(date).weight = kg;
 
@@ -121,11 +133,12 @@ export function collectUnits({ entries, water, weights, goals, profile, preferen
 
 // Write units into the app's data. Pure: returns new state and keeps the same reference for anything untouched.
 export function applyUnits(state, units) {
-  let { entries, water, weights, goals, profile, preferences, onboarded, meals } = state;
+  let { entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals } = state;
   for (const [key, value] of Object.entries(units)) {
     if (isDayKey(key)) {
       const date = dateOf(key);
       entries = [...entries.filter((e) => e.date !== date), ...value.entries];
+      plan = [...plan.filter((p) => p.date !== date), ...value.plan];
       water = { ...water };
       if (value.water > 0) water[date] = value.water;
       else delete water[date];
@@ -141,5 +154,5 @@ export function applyUnits(state, units) {
       meals = value.meals;
     }
   }
-  return { entries, water, weights, goals, profile, preferences, onboarded, meals };
+  return { entries, plan, water, weights, goals, profile, preferences, onboarded, meals };
 }

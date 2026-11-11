@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { portion } from '../lib/recipes.js';
 import { toNumber } from '../lib/meals.js';
+import { mealFlags } from '../lib/mealSafety.js';
+import { usePreferences } from '../lib/PreferencesContext.js';
 
 // The recipe book: saved meals you can log in one tap, plus a button to add a new one.
 export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, onLog }) {
+  const prefs = usePreferences();
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState(null);
   const [servings, setServings] = useState('1');
@@ -44,6 +47,7 @@ export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, o
               {shown.map((meal) => {
                 const open = openId === meal.id;
                 const perServing = portion(meal, 1);
+                const flags = mealFlags(meal, prefs).hard;
                 const eating = portion(meal, eaten || 0);
                 return (
                   <li key={meal.id} className="result">
@@ -63,6 +67,16 @@ export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, o
                           Makes {meal.servings} {meal.servings === 1 ? 'serving' : 'servings'}, {meal.ingredients.length}{' '}
                           {meal.ingredients.length === 1 ? 'ingredient' : 'ingredients'}
                         </span>
+                        {(meal.ai || flags.length > 0) && (
+                          <span className="tag-line">
+                            {meal.ai && <span className="tag ai">AI-written</span>}
+                            {flags.map((w) => (
+                              <span key={w} className="tag warn">
+                                {w}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </span>
                       <strong>{perServing.calories} kcal</strong>
                     </button>
@@ -80,6 +94,7 @@ export default function MealsPane({ meals, slotLabel, onNew, onEdit, onDelete, o
                             </li>
                           ))}
                         </ul>
+                        {meal.ai && <p className="note">Written by the AI. Check the ingredients against your allergies before you cook it.</p>}
                         {meal.notes && <p className="notes">{meal.notes}</p>}
 
                         <label className="field compact">
