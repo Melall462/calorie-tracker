@@ -452,3 +452,6 @@ h1:focus { outline: none; }
 .method-steps li { margin: 8px 0; padding-left: 4px; }
 .book-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 .tag.book { background: rgba(62, 142, 94, 0.18); color: #1f5a3a; }
+
+/* The meal builder has four ingredient sources, so keep each label on one line */
+.builder-add .segmented button { white-space: nowrap; padding-left: 6px; padding-right: 6px; }

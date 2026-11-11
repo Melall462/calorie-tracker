@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { SearchPane, CustomPane } from './FoodPicker.jsx';
 import ScanPane from './ScanPane.jsx';
+import MyFoodsPane from './MyFoodsPane.jsx';
+import { useFoods } from '../lib/FoodsContext.js';
+import { customProduct } from '../lib/myFoods.js';
 import { toNumber } from '../lib/meals.js';
 import { newId } from '../lib/id.js';
 import { round1, sumEntries } from '../lib/nutrition.js';
 import { MAX_INGREDIENTS, MAX_SERVINGS } from '../lib/recipes.js';
 
 const SOURCES = [
+  { id: 'mine', label: 'My foods' },
   { id: 'search', label: 'Food list' },
   { id: 'custom', label: 'Custom' },
   { id: 'scan', label: 'Scan' },
@@ -14,12 +18,16 @@ const SOURCES = [
 
 // Create or edit a saved meal: a name, how many servings it makes, ingredients and optional notes.
 export default function MealBuilder({ meal, onSave, onCancel }) {
+  const foods = useFoods();
   const [name, setName] = useState(meal?.name ?? '');
   const [servings, setServings] = useState(String(meal?.servings ?? 1));
   const [notes, setNotes] = useState(meal?.notes ?? '');
   const [ingredients, setIngredients] = useState(meal?.ingredients ?? []);
-  const [source, setSource] = useState('search');
+  // Saved foods come first when there are any, otherwise the built-in food list.
+  const [source, setSource] = useState(foods.foods.length > 0 ? 'mine' : 'search');
   const [customName, setCustomName] = useState(''); // a name to start the custom ingredient form with
+  const [customCode, setCustomCode] = useState(''); // the barcode of a scan that found nothing, kept with the new food
+  const [notice, setNotice] = useState('');
 
   const count = toNumber(servings);
   const total = sumEntries(ingredients);
@@ -100,6 +108,8 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
                 onClick={() => {
                   setSource(s.id);
                   setCustomName('');
+                  setCustomCode('');
+                  setNotice('');
                 }}
                 aria-pressed={source === s.id}
               >
@@ -107,14 +117,32 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
               </button>
             ))}
           </div>
+          {source === 'mine' && (
+            <MyFoodsPane
+              addLabel="Add ingredient"
+              notice={notice}
+              onAdd={addIngredient}
+              onScan={() => setSource('scan')}
+              onCustom={() => setSource('custom')}
+            />
+          )}
           {source === 'search' && <SearchPane onAdd={addIngredient} addLabel="Add ingredient" />}
           {source === 'custom' && (
             <CustomPane
+              key={`${customCode}|${customName}`}
               onAdd={addIngredient}
               addLabel="Add ingredient"
               nameLabel="Ingredient name"
               namePlaceholder="Soy sauce"
               initialName={customName}
+              barcode={customCode}
+              onSaveFood={(food) => foods.remember(customProduct(food))}
+              onSavedOnly={(savedName) => {
+                setNotice(`Saved ${savedName} to your foods.`);
+                setCustomName('');
+                setCustomCode('');
+                setSource('mine');
+              }}
             />
           )}
           {source === 'scan' && (
@@ -122,8 +150,9 @@ export default function MealBuilder({ meal, onSave, onCancel }) {
               onAdd={addIngredient}
               addLabel="Add ingredient"
               customLabel="Add it as a custom ingredient"
-              onCustom={(name) => {
+              onCustom={(name, code) => {
                 setCustomName(name);
+                setCustomCode(code ?? '');
                 setSource('custom');
               }}
             />
