@@ -87,7 +87,7 @@ p { margin: 8px 0; }
   text-underline-offset: 3px;
   cursor: pointer;
   padding: 6px 0;
-  padding-right: 10px;
+  padding-right: 10px
 }
 .link-btn.start { align-self: flex-start; color: var(--forest); }
 
@@ -469,3 +469,12 @@ h1:focus { outline: none; }
 .delete-account { display: flex; flex-direction: column; gap: 12px; }
 .delete-account h2, .delete-account p, .delete-account ul { margin: 0; }
 .delete-account ul { padding-left: 20px; }
+
+/* Privacy policy page, and links styled like the app's small buttons */
+a.link-btn { display: inline-block; text-decoration: underline; }
+.legal { display: flex; flex-direction: column; gap: 12px; padding-bottom: 48px; }
+.legal h1 { margin: 8px 0 0; }
+.legal h2 { margin: 18px 0 0; font-size: 1.1rem; }
+.legal p, .legal ul { margin: 0; line-height: 1.5; }
+.legal ul { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.legal a { color: var(--forest); font-weight: 600; }

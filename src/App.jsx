@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocalStorage } from './lib/useLocalStorage.js';
 import { todayKey, formatDay } from './lib/dates.js';
 import { newId } from './lib/id.js';
@@ -13,6 +13,7 @@ import { PreferencesContext } from './lib/PreferencesContext.js';
 import { CloudContext } from './lib/CloudContext.js';
 import { useCloudSync } from './lib/useCloudSync.js';
 import PasswordRecovery from './components/PasswordRecovery.jsx';
+import PrivacyPolicy from './components/PrivacyPolicy.jsx';
 import { applyUnits as applyUnitsToState, collectUnits } from './lib/units.js';
 import Today from './components/Today.jsx';
 import AddFood from './components/AddFood.jsx';
@@ -30,7 +31,20 @@ const TABS = [
   { id: 'account', label: 'Account', icon: 'user' },
 ];
 
+const wantsPrivacy = () => window.location.hash === '#privacy';
+
 export default function App() {
+  // The privacy policy has a link of its own (the site address with #privacy on the end).
+  const [privacyOpen, setPrivacyOpen] = useState(wantsPrivacy);
+  useEffect(() => {
+    const onChange = () => setPrivacyOpen(wantsPrivacy());
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  const closePrivacy = () => {
+    window.history.replaceState(null, '', window.location.pathname);
+    setPrivacyOpen(false);
+  };
   // First-time visitors go through setup. People who already have saved data skip it (see lib/onboarding.js).
   const [onboarded, setOnboarded] = useLocalStorage('nutrily:onboarded', hasExistingData);
   const [setupOpen, setSetupOpen] = useState(false); // setup opened again from the Account page
@@ -192,6 +206,8 @@ export default function App() {
       </CloudContext.Provider>
     );
   }
+
+  if (privacyOpen) return <PrivacyPolicy onClose={closePrivacy} />;
 
   if (onboarded !== true || setupOpen) {
     return (

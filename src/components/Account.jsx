@@ -70,6 +70,11 @@ export default function Account({ goals, onSaveGoals, profile, setProfile, weigh
           Run setup again
         </button>
       </p>
+      <p className="muted small account-footer">
+        <a className="link-btn" href="#privacy">
+          Privacy policy
+        </a>
+      </p>
     </>
   );
 }

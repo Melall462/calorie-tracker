@@ -319,6 +319,12 @@ export default function PlanGenerator({ goals, meals, onDone, onCancel }) {
         <p className="muted small">
           This uses {mode === 'days' && reuse.chance > 0 && usableCount > 0 ? 'up to ' : ''}{requests} of your {DAILY_LIMIT} AI requests for today.
         </p>
+        <p className="muted small">
+          To write meals, your calorie targets, eating style, allergies and food preferences are sent to an AI service (Anthropic). Your email address is not.{' '}
+          <a href="#privacy" target="_blank" rel="noopener">
+            Privacy policy
+          </a>
+        </p>
         <button className="btn" onClick={run} disabled={!valid}>
           Generate
         </button>

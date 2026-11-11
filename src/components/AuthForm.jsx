@@ -126,6 +126,15 @@ export default function AuthForm({ onDone, startIn = 'signin' }) {
       <button className="btn" type="submit" disabled={busy}>
         {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
       </button>
+      {mode === 'signup' && (
+        <p className="muted small">
+          By creating an account you agree to the{' '}
+          <a href="#privacy" target="_blank" rel="noopener">
+            privacy policy
+          </a>
+          . It opens in a new tab.
+        </p>
+      )}
       {message && (
         <p className={message.error ? 'error' : 'note'} role="alert">
           {message.text}

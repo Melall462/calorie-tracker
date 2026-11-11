@@ -113,6 +113,9 @@ export default function Onboarding({ initialProfile, initialPreferences, replay,
             </button>
           )}
           {cloud.session && <p className="welcome-account">Signed in as {cloud.email}. Your data will sync.</p>}
+          <a className="link-btn" href="#privacy">
+            Privacy policy
+          </a>
         </section>
       </main>
     );
