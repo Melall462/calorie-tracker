@@ -126,8 +126,11 @@ export function SearchPane({ onAdd, addLabel = 'Add food' }) {
 
 const BLANK = { name: '', calories: '', protein: '', carbs: '', fat: '' };
 
-export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food name', namePlaceholder = 'Leftover lasagne', initialName = '' }) {
+export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food name', namePlaceholder = 'Leftover lasagne', initialName = '', barcode = '', onSaveFood, onSavedOnly }) {
   const [form, setForm] = useState({ ...BLANK, name: initialName });
+  // A barcode means the person scanned something we couldn't find, so saving is the point and starts ticked.
+  // A one-off food typed in by hand starts unticked.
+  const [save, setSave] = useState(barcode !== '');
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const protein = toNumber(form.protein);
@@ -136,16 +139,32 @@ export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food nam
   const fromMacros = Math.round(protein * 4 + carbs * 4 + fat * 9);
   const calories = Math.round(toNumber(form.calories)) || fromMacros; // blank calories are worked out from the macros
   const canAdd = form.name.trim() !== '' && calories > 0;
+  const item = () => ({ name: form.name.trim(), serving: '', calories, protein: round1(protein), carbs: round1(carbs), fat: round1(fat) });
 
   function submit(e) {
     e.preventDefault();
     if (!canAdd) return;
-    onAdd({ name: form.name.trim(), serving: '', calories, protein: round1(protein), carbs: round1(carbs), fat: round1(fat) });
+    const food = item();
+    if (onSaveFood && save) onSaveFood({ ...food, code: barcode });
+    onAdd(food);
+    setForm(BLANK);
+  }
+
+  function saveOnly() {
+    if (!canAdd || !onSaveFood) return;
+    const food = item();
+    onSaveFood({ ...food, code: barcode });
+    onSavedOnly?.(food.name);
     setForm(BLANK);
   }
 
   return (
     <form className="pane" onSubmit={submit}>
+      {barcode && (
+        <p className="note" role="status">
+          Barcode {barcode} is kept with this food, so scanning it again finds it straight away.
+        </p>
+      )}
       <label className="field">
         <span>{nameLabel}</span>
         <input value={form.name} onChange={set('name')} placeholder={namePlaceholder} maxLength={120} />
@@ -169,9 +188,20 @@ export function CustomPane({ onAdd, addLabel = 'Add food', nameLabel = 'Food nam
         </label>
       </div>
       <p className="muted small">Leave kcal blank to work it out from the macros.</p>
+      {onSaveFood && (
+        <label className="check">
+          <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} />
+          <span>Save to my foods{save ? ' (these numbers are kept as one serving)' : ''}</span>
+        </label>
+      )}
       <button className="btn" type="submit" disabled={!canAdd}>
         {addLabel}
       </button>
+      {onSaveFood && save && (
+        <button className="btn secondary" type="button" onClick={saveOnly} disabled={!canAdd}>
+          Just save it to my foods
+        </button>
+      )}
     </form>
   );
 }

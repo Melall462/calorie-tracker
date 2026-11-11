@@ -1,37 +1,30 @@
 import { useState } from 'react';
 import { MEALS, defaultMeal } from '../lib/meals.js';
-import { SearchPane, CustomPane } from './FoodPicker.jsx';
+import { customProduct } from '../lib/myFoods.js';
+import { useFoods } from '../lib/FoodsContext.js';
+import { CustomPane } from './FoodPicker.jsx';
+import MyFoodsPane from './MyFoodsPane.jsx';
 import ScanPane from './ScanPane.jsx';
-import MealsPane from './MealsPane.jsx';
-import MealBuilder from './MealBuilder.jsx';
 
 const MODES = [
   { id: 'search', label: 'Search' },
-  { id: 'custom', label: 'Custom' },
-  { id: 'meals', label: 'Meals' },
   { id: 'scan', label: 'Scan' },
+  { id: 'custom', label: 'Custom' },
 ];
 
-export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMeal }) {
+// Add food: your saved foods (Search), a barcode scan, or a food typed in by hand. Meals live in the Meals tab.
+export default function AddFood({ dayLabel, onAdd }) {
+  const foods = useFoods();
   const [mode, setMode] = useState('search');
   const [slot, setSlot] = useState(defaultMeal()); // breakfast, lunch, dinner or snack
-  const [customName, setCustomName] = useState(''); // a name to start the Custom form with (from a scan that found no calories)
-  const [building, setBuilding] = useState(undefined); // undefined: not building, null: a new meal, object: editing that meal
+  const [custom, setCustom] = useState({ name: '', code: '' }); // what the Custom form starts with (from a scan that found nothing)
+  const [notice, setNotice] = useState('');
 
-  if (building !== undefined) {
-    return (
-      <MealBuilder
-        meal={building}
-        onCancel={() => setBuilding(undefined)}
-        onSave={(meal) => {
-          onSaveMeal(meal);
-          setBuilding(undefined);
-        }}
-      />
-    );
-  }
-
-  const slotLabel = MEALS.find((m) => m.id === slot).label;
+  const go = (next) => {
+    setMode(next);
+    setNotice('');
+    if (next !== 'custom') setCustom({ name: '', code: '' });
+  };
 
   return (
     <>
@@ -51,38 +44,41 @@ export default function AddFood({ dayLabel, onAdd, meals, onSaveMeal, onDeleteMe
 
       <div className="segmented" role="group" aria-label="How to add food">
         {MODES.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => {
-              setMode(m.id);
-              setCustomName('');
-            }}
-            aria-pressed={mode === m.id}
-          >
+          <button key={m.id} onClick={() => go(m.id)} aria-pressed={mode === m.id}>
             {m.label}
           </button>
         ))}
       </div>
 
-      {mode === 'search' && <SearchPane onAdd={(item) => onAdd({ ...item, meal: slot, source: 'search' })} />}
-      {mode === 'custom' && <CustomPane initialName={customName} onAdd={(item) => onAdd({ ...item, meal: slot, source: 'manual' })} />}
+      {mode === 'search' && (
+        <MyFoodsPane
+          notice={notice}
+          onAdd={(item) => onAdd({ ...item, meal: slot, source: 'search' })}
+          onScan={() => go('scan')}
+          onCustom={() => go('custom')}
+        />
+      )}
       {mode === 'scan' && (
         <ScanPane
           onAdd={(item) => onAdd({ ...item, meal: slot, source: 'scan' })}
-          onCustom={(name) => {
-            setCustomName(name);
+          onCustom={(name, code) => {
+            setCustom({ name, code: code ?? '' });
             setMode('custom');
           }}
         />
       )}
-      {mode === 'meals' && (
-        <MealsPane
-          meals={meals}
-          slotLabel={slotLabel}
-          onNew={() => setBuilding(null)}
-          onEdit={(meal) => setBuilding(meal)}
-          onDelete={onDeleteMeal}
-          onLog={(item) => onAdd({ ...item, meal: slot, source: 'meal' })}
+      {mode === 'custom' && (
+        <CustomPane
+          key={`${custom.code}|${custom.name}`}
+          initialName={custom.name}
+          barcode={custom.code}
+          onAdd={(item) => onAdd({ ...item, meal: slot, source: 'manual' })}
+          onSaveFood={(food) => foods.remember(customProduct(food))}
+          onSavedOnly={(name) => {
+            setNotice(`Saved ${name} to your foods.`);
+            setCustom({ name: '', code: '' });
+            setMode('search');
+          }}
         />
       )}
     </>

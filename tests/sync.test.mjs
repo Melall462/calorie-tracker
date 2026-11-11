@@ -11,7 +11,7 @@ import { cleanPreferences } from '../src/lib/preferences.js';
 let fails = 0;
 const ok = (n, c, extra = '') => { console.log(c ? 'PASS' : 'FAIL', n, c ? '' : extra); if (!c) fails++; };
 
-const blank = () => ({ entries: [], plan: [], water: {}, weights: {}, goals: sanitizeGoals(null), profile: cleanProfile(null), preferences: cleanPreferences(null), onboarded: false, meals: [] });
+const blank = () => ({ entries: [], plan: [], water: {}, weights: {}, goals: sanitizeGoals(null), profile: cleanProfile(null), preferences: cleanPreferences(null), onboarded: false, meals: [], foods: [] });
 const D1 = '2026-11-10', D2 = '2026-11-11', D3 = '2026-11-09';
 const entry = (id, date, name = 'Food', calories = 100, meal = 'lunch') => ({ id, date, name, serving: '', calories, protein: 5, carbs: 10, fat: 2, meal, source: 'manual' });
 
@@ -285,6 +285,48 @@ ok('same() ignores order of lists but not of values', same({ a: [1, 2] }, { a: [
 ok('cleanUnit rejects unknown keys', cleanUnit('nope', {}) === null && cleanUnit('day:2026-13-99x', {}) === null);
 const mu = mergeUnit(`day:${D1}`, emptyUnit(`day:${D1}`), { entries: [entry('1', D1)], water: 250, weight: null }, { entries: [], water: 500, weight: 70 });
 ok('mergeUnit combines a day field by field', mu.entries.length === 1 && mu.water === 500 && mu.weight === 70);
+
+
+// ============ My foods (scanned and typed-in foods) ============
+{
+  const food = (code, name, lastUsed = 1, extra = {}) => ({ id: code, code, name, brand: '', unit: 'g', servingText: '', servingAmount: null, allergens: [], traces: [], analysis: [], hasNutrition: true, per100: { calories: 100, protein: 5, carbs: 10, fat: 2 }, perServing: null, custom: false, lastUsed, ...extra });
+  const C1 = '3017620422003', C2 = '5000112637922', C3 = '9300675024235';
+  const s = new FakeServer(); const A = new Device(s); const B = new Device(s);
+  A.state.foods = [food(C1, 'Spread', 10)];
+  await A.sync();
+  ok('saved foods are their own unit, uploaded once there is one', [...s.table(A.userId).keys()].includes('foods') && s.table(A.userId).get('foods').value.foods.length === 1);
+  await B.sync();
+  ok('another device gets the saved foods', B.state.foods.length === 1 && B.state.foods[0].name === 'Spread' && equalState(A, B));
+
+  A.state.foods = [food(C2, 'Yoghurt', 20), ...A.state.foods];
+  B.state.foods = [food(C3, 'Lasagne', 30, { custom: true, per100: null, perServing: { calories: 520, protein: 30, carbs: 48, fat: 22 } }), ...B.state.foods];
+  await A.sync(); await B.sync(); await A.sync();
+  ok('foods added on two devices are both kept', A.state.foods.map((f) => f.id).sort().join() === [C1, C2, C3].sort().join() && equalState(A, B));
+  ok('a typed-in food arrives intact, with its barcode and per-serving numbers', A.state.foods.find((f) => f.id === C3).custom === true && A.state.foods.find((f) => f.id === C3).perServing.calories === 520);
+
+  A.state.foods = A.state.foods.filter((f) => f.id !== C1);
+  await A.sync(); await B.sync();
+  ok('removing a food on one device removes it on the other (and it does not come back)', !B.state.foods.some((f) => f.id === C1) && (await B.sync(), await A.sync(), !A.state.foods.some((f) => f.id === C1)) && equalState(A, B));
+
+  A.state.foods = A.state.foods.map((f) => (f.id === C2 ? { ...f, lastUsed: 900 } : f));
+  B.state.foods = B.state.foods.map((f) => (f.id === C3 ? { ...f, name: 'Mum\'s lasagne' } : f));
+  await A.sync(); await B.sync(); await A.sync();
+  ok('different edits to different foods are both kept (used-today on one, renamed on the other)', A.state.foods.find((f) => f.id === C2).lastUsed === 900 && A.state.foods.find((f) => f.id === C3).name === 'Mum\'s lasagne' && equalState(A, B));
+
+  A.state.foods = [];
+  await A.sync(); await B.sync();
+  ok('removing every saved food syncs too (an empty list is not "nothing to do")', B.state.foods.length === 0 && equalState(A, B));
+}
+{
+  const s = new FakeServer(); const A = new Device(s); const B = new Device(s);
+  ok('with no saved foods there is no foods unit at all, so nothing else about syncing changed', !('foods' in A.units()) && collectUnits({ ...blank(), foods: [{ id: 'x' }] }).foods.foods.length === 1);
+  const t = s.table(A.userId);
+  t.set('foods', { key: 'foods', version: 1, updated_at: s.stamp(), value: { foods: [{ id: 'bad' }, 7, { id: C0(), name: 'N', code: '3017620422003', perServing: { calories: 5 }, lastUsed: 1 }] } });
+  await A.sync();
+  ok('hostile saved foods from the cloud are cleaned (broken ones dropped, good ones kept)', A.state.foods.length === 1 && A.state.foods[0].name === 'N');
+  ok('the foods unit is cleaned like any other (cleanUnit and emptyUnit know it)', same(cleanUnit('foods', { foods: 5 }), { foods: [] }) && same(emptyUnit('foods'), { foods: [] }));
+  function C0() { return '3017620422003'; }
+}
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
 process.exit(fails ? 1 : 0);

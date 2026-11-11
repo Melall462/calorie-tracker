@@ -75,6 +75,8 @@ export function mergeUnit(key, base, local, remote, opts = {}) {
     };
   } else if (key === 'meals') {
     merged = { meals: mergeById(base.meals, local.meals, remote.meals, opts) };
+  } else if (key === 'foods') {
+    merged = { foods: mergeById(base.foods, local.foods, remote.foods, opts) };
   } else {
     const localWater = local.water;
     const remoteWater = remote.water;

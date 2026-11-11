@@ -138,3 +138,19 @@ export function scanWarnings(product, prefs) {
     reminder: prefs.avoid.length > 0, // always remind people with allergies: the absence of a warning is not a guarantee
   };
 }
+
+// Short tags for a saved product in a list, such as "Contains dairy" or "Not vegan". `flags` are things the database
+// lists against the person's rules (and hide the food when the filter is on), `traces` are only "may contain".
+export function productTags(product, prefs) {
+  const flags = [];
+  const traces = [];
+  for (const id of prefs.avoid) {
+    const word = allergenWord(id);
+    if (product.allergens?.some((t) => tagMatches(t, id))) flags.push(`Contains ${word}`);
+    else if (product.traces?.some((t) => tagMatches(t, id))) traces.push(`May contain ${word}`);
+  }
+  const analysis = (product.analysis ?? []).map(bare);
+  if (prefs.diets.includes('vegan') && analysis.includes('non-vegan')) flags.push('Not vegan');
+  else if (prefs.diets.includes('vegetarian') && analysis.includes('non-vegetarian')) flags.push('Not vegetarian');
+  return { flags, traces };
+}

@@ -3,6 +3,7 @@
 //   day:YYYY-MM-DD   everything for one day: its food entries, planned meals, water and weigh-in
 //   settings         targets, body stats, food preferences and whether setup is done
 //   meals            the recipe book
+//   foods            the foods scanned or typed in (My foods)
 //
 // A day is the natural unit: two devices rarely edit the same day at the same moment, and a sync only has to move
 // the days that changed. Pure functions, no React.
@@ -10,6 +11,7 @@ import { DEFAULT_GOALS, WATER_MAX, WEIGHT_LIMITS, round1, sanitizeGoals } from '
 import { DEFAULT_PROFILE, cleanProfile } from './calculator.js';
 import { EMPTY_PREFERENCES, cleanPreferences } from './preferences.js';
 import { cleanMeals } from './recipes.js';
+import { cleanFoods } from './myFoods.js';
 import { MEALS } from './meals.js';
 import { cleanPlanItem, MAX_PLAN_PER_DAY } from './plan.js';
 
@@ -19,7 +21,7 @@ const SOURCES = ['search', 'manual', 'meal', 'scan', 'ai'];
 export const isDayKey = (key) => /^day:\d{4}-\d{2}-\d{2}$/.test(key);
 export const dayKey = (date) => `day:${date}`;
 export const dateOf = (key) => key.slice(4);
-export const isKnownKey = (key) => key === 'settings' || key === 'meals' || isDayKey(key);
+export const isKnownKey = (key) => key === 'settings' || key === 'meals' || key === 'foods' || isDayKey(key);
 
 // What a unit looks like before anything has been saved. A unit equal to this has "no changes".
 export function emptyUnit(key) {
@@ -32,6 +34,7 @@ export function emptyUnit(key) {
     };
   }
   if (key === 'meals') return { meals: [] };
+  if (key === 'foods') return { foods: [] };
   return { entries: [], plan: [], water: 0, weight: null };
 }
 
@@ -84,6 +87,7 @@ export function cleanUnit(key, value) {
     };
   }
   if (key === 'meals') return { meals: cleanMeals(v.meals) };
+  if (key === 'foods') return { foods: cleanFoods(v.foods) };
   if (!isDayKey(key)) return null;
   const date = dateOf(key);
   const seen = new Set();
@@ -116,7 +120,7 @@ export function cleanUnit(key, value) {
 /* ---------- App state <-> units ---------- */
 
 // Cut the app's state into units. Only days with something in them are included.
-export function collectUnits({ entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals }) {
+export function collectUnits({ entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals, foods = [] }) {
   const days = {};
   const day = (date) => (days[date] ??= { entries: [], plan: [], water: 0, weight: null });
   for (const e of entries) if (e && typeof e.date === 'string') day(e.date).entries.push(e);
@@ -128,12 +132,13 @@ export function collectUnits({ entries, plan = [], water, weights, goals, profil
   for (const [date, value] of Object.entries(days)) if (/^\d{4}-\d{2}-\d{2}$/.test(date)) units[dayKey(date)] = value;
   units.settings = { goals, profile, preferences, onboarded: onboarded === true };
   units.meals = { meals };
+  if (foods.length > 0) units.foods = { foods }; // like an empty day: nothing to send until there is something (a missing unit counts as empty)
   return units;
 }
 
 // Write units into the app's data. Pure: returns new state and keeps the same reference for anything untouched.
 export function applyUnits(state, units) {
-  let { entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals } = state;
+  let { entries, plan = [], water, weights, goals, profile, preferences, onboarded, meals, foods = [] } = state;
   for (const [key, value] of Object.entries(units)) {
     if (isDayKey(key)) {
       const date = dateOf(key);
@@ -152,7 +157,9 @@ export function applyUnits(state, units) {
       if (value.onboarded) onboarded = true;
     } else if (key === 'meals') {
       meals = value.meals;
+    } else if (key === 'foods') {
+      foods = value.foods;
     }
   }
-  return { entries, plan, water, weights, goals, profile, preferences, onboarded, meals };
+  return { entries, plan, water, weights, goals, profile, preferences, onboarded, meals, foods };
 }

@@ -5,6 +5,8 @@ import { newId } from './lib/id.js';
 import { WATER_MAX, cleanWeights, initialGoals, sanitizeGoals } from './lib/nutrition.js';
 import { DEFAULT_PROFILE, cleanProfile } from './lib/calculator.js';
 import { cleanMeals } from './lib/recipes.js';
+import { FoodsContext } from './lib/FoodsContext.js';
+import { cleanFoods, findByCode, forgetFood, rememberFood, touchFood } from './lib/myFoods.js';
 import { cleanPlan, entryForPlanItem } from './lib/plan.js';
 import { EMPTY_PREFERENCES, cleanPreferences } from './lib/preferences.js';
 import { PreferencesContext } from './lib/PreferencesContext.js';
@@ -40,6 +42,7 @@ export default function App() {
   const [savedWeights, setWeights] = useLocalStorage('nutrily:weights', {}); // { "YYYY-MM-DD": kg }
   const [savedMeals, setMeals] = useLocalStorage('nutrily:meals', []); // the recipe book
   const [savedPlan, setPlan] = useLocalStorage('nutrily:plan', []); // meals planned onto days
+  const [savedFoods, setFoods] = useLocalStorage('nutrily:foods', []); // My foods: scanned and typed-in foods, for quick access
   const [savedPrefs, setPreferences] = useLocalStorage('nutrily:preferences', EMPTY_PREFERENCES); // diet, allergies, foods liked and avoided
   const [savedProfile, setProfile] = useLocalStorage('nutrily:profile', DEFAULT_PROFILE); // body stats, kept as text
 
@@ -49,9 +52,17 @@ export default function App() {
   const profile = cleanProfile(savedProfile);
   const meals = cleanMeals(savedMeals);
   const plan = cleanPlan(savedPlan);
+  const foods = cleanFoods(savedFoods);
+  const foodsApi = {
+    foods,
+    remember: (product) => setFoods((prev) => rememberFood(cleanFoods(prev), product)),
+    forget: (id) => setFoods((prev) => forgetFood(cleanFoods(prev), id)),
+    touch: (id) => setFoods((prev) => touchFood(cleanFoods(prev), id)),
+    byCode: (code) => findByCode(foods, code),
+  };
   const preferences = cleanPreferences(savedPrefs);
   // Optional cloud sync (see lib/sync.js). It only does anything once Supabase is configured and someone signs in.
-  const current = () => ({ entries, plan, water: waterByDate, weights, goals, profile, preferences, onboarded: onboarded === true, meals });
+  const current = () => ({ entries, plan, water: waterByDate, weights, goals, profile, preferences, onboarded: onboarded === true, meals, foods });
   const cloud = useCloudSync({
     getUnits: () => collectUnits(current()),
     applyUnits: (units) => {
@@ -65,9 +76,10 @@ export default function App() {
       if (after.profile !== before.profile) setProfile(after.profile);
       if (after.preferences !== before.preferences) setPreferences(after.preferences);
       if (after.meals !== before.meals) setMeals(after.meals);
+      if (after.foods !== before.foods) setFoods(after.foods);
       if (after.onboarded && !before.onboarded) setOnboarded(true);
     },
-    watch: [entries, savedPlan, waterByDate, savedWeights, savedGoals, savedProfile, savedPrefs, savedMeals, onboarded],
+    watch: [entries, savedPlan, waterByDate, savedWeights, savedGoals, savedProfile, savedPrefs, savedMeals, savedFoods, onboarded],
   });
 
   const dayEntries = entries.filter((e) => e.date === date);
@@ -182,6 +194,7 @@ export default function App() {
   return (
     <CloudContext.Provider value={cloud}>
     <PreferencesContext.Provider value={preferences}>
+    <FoodsContext.Provider value={foodsApi}>
       <header className="app-header">
         <span className="wordmark">Nutrily</span>
       </header>
@@ -203,7 +216,7 @@ export default function App() {
         )}
         {tab === 'edit' && editing && <EditEntry key={editing.id} entry={editing} onSave={saveEdit} onCancel={cancelEdit} />}
         {tab === 'add' && (
-          <AddFood dayLabel={formatDay(date)} onAdd={addEntry} meals={meals} onSaveMeal={saveMeal} onDeleteMeal={deleteMeal} />
+          <AddFood dayLabel={formatDay(date)} onAdd={addEntry} />
         )}
         {tab === 'meals' && (
           <MealsPage
@@ -249,6 +262,7 @@ export default function App() {
           </button>
         ))}
       </nav>
+    </FoodsContext.Provider>
     </PreferencesContext.Provider>
     </CloudContext.Provider>
   );
